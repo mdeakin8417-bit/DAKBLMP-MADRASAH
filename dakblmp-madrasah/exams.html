@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Exams & Results — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.tabs { display:flex; gap:4px; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x:auto; }
+.tab-btn { padding: 10px 16px; border:none; background:none; font-size:13.5px; font-weight:600; color: var(--color-ink-soft); cursor:pointer; border-bottom: 2.5px solid transparent; white-space:nowrap; }
+.tab-btn.active { color: var(--color-green-800); border-bottom-color: var(--color-green-800); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+.inline-form { display:flex; gap: var(--space-2); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-5); }
+.inline-form .field { margin-bottom: 0; min-width: 140px; }
+.exam-card { border:1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-3); background: var(--color-surface); }
+.exam-card-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+.marks-input { width: 80px; padding: 8px; border-radius: var(--radius-sm); border: 1.4px solid var(--color-border); text-align:center; }
+.grade-A { color: var(--color-success); font-weight:700; }
+.grade-F { color: var(--color-danger); font-weight:700; }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2 data-i18n="nav_exams">পরীক্ষা ও ফলাফল</h2>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="exams">পরীক্ষা সেটআপ / Exam Setup</button>
+        <button class="tab-btn" data-tab="entry">নম্বর এন্ট্রি / Result Entry</button>
+        <button class="tab-btn" data-tab="marksheet">মার্কশিট / Marksheet</button>
+        <button class="tab-btn" data-tab="types">পরীক্ষার ধরন / Exam Types</button>
+      </div>
+
+      <!-- ===== EXAM SETUP ===== -->
+      <div class="tab-panel active" id="panel-exams">
+        <form id="form-exam" class="inline-form">
+          <div class="field">
+            <label>পরীক্ষার নাম / Exam name</label>
+            <input type="text" id="ex-name" placeholder="e.g. Half Yearly 2026" required style="width:190px;">
+          </div>
+          <div class="field">
+            <label>ধরন / Type</label>
+            <select id="ex-type"></select>
+          </div>
+          <div class="field">
+            <label data-i18n="class_label">শ্রেণি</label>
+            <select id="ex-class"></select>
+          </div>
+          <div class="field">
+            <label>তারিখ / Date</label>
+            <input type="date" id="ex-date">
+          </div>
+          <button type="submit" class="btn btn-primary">+ পরীক্ষা তৈরি করুন / Create exam</button>
+        </form>
+
+        <div id="exams-list"><div class="skeleton" style="height:60px;"></div></div>
+      </div>
+
+      <!-- ===== RESULT ENTRY ===== -->
+      <div class="tab-panel" id="panel-entry">
+        <div class="card card-pad" style="margin-bottom: var(--space-5);">
+          <div class="grid-2">
+            <div class="field">
+              <label>পরীক্ষা / Exam</label>
+              <select id="re-exam"></select>
+            </div>
+            <div class="field">
+              <label>বিষয় / Subject</label>
+              <select id="re-subject"></select>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-load-entry">তালিকা লোড করুন / Load student list</button>
+        </div>
+        <div class="card" id="entry-card" hidden>
+          <div style="padding: var(--space-4) var(--space-5); border-bottom:1px solid var(--color-border); display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:15px;" id="entry-summary">—</h3>
+            <button class="btn btn-primary" id="btn-save-marks">সংরক্ষণ করুন / Save marks</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>ID</th><th>Name</th><th id="entry-marks-head">Marks</th></tr></thead>
+              <tbody id="entry-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MARKSHEET ===== -->
+      <div class="tab-panel" id="panel-marksheet">
+        <div class="card card-pad" style="margin-bottom: var(--space-5);">
+          <div class="grid-2">
+            <div class="field">
+              <label>পরীক্ষা / Exam</label>
+              <select id="ms-exam"></select>
+            </div>
+            <div class="field">
+              <label>ছাত্র খুঁজুন / Search student</label>
+              <input type="text" id="ms-student-search" placeholder="নাম বা আইডি / Name or ID">
+              <div id="ms-student-results" class="card" style="margin-top:4px; max-height:180px; overflow-y:auto; display:none;"></div>
+              <input type="hidden" id="ms-student-id">
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-load-marksheet">মার্কশিট দেখুন / View marksheet</button>
+        </div>
+        <div id="marksheet-result"></div>
+      </div>
+
+      <!-- ===== EXAM TYPES ===== -->
+      <div class="tab-panel" id="panel-types">
+        <form id="form-exam-type" class="inline-form">
+          <div class="field">
+            <input type="text" id="et-name" placeholder="e.g. Half Yearly" required style="width:220px;">
+          </div>
+          <button type="submit" class="btn btn-primary">+ যোগ করুন / Add</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th data-i18n="status">Status</th><th></th></tr></thead>
+            <tbody id="exam-types-tbody"><tr><td colspan="3"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<!-- Add subject to exam modal -->
+<div class="modal-backdrop" id="modal-exam-subject" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>বিষয় যোগ করুন / Add subject</h3>
+      <button class="modal-close" onclick="closeModal('modal-exam-subject')">&times;</button>
+    </div>
+    <form id="form-exam-subject" class="stack">
+      <input type="hidden" id="es-exam-id">
+      <div class="field">
+        <label>বিষয় / Subject</label>
+        <select id="es-subject" required></select>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>পূর্ণ নম্বর / Full marks</label><input type="number" id="es-full" value="100" required></div>
+        <div class="field"><label>পাস নম্বর / Pass marks</label><input type="number" id="es-pass" value="33" required></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">যোগ করুন / Add</button>
+    </form>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+let examTypesCache = [];
+let classesCache = [];
+let subjectsCache = [];
+let examsCache = [];
+let sessionsCache = [];
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+function calcGrade(pct) {
+  if (pct >= 80) return { grade: 'A+', gpa: 5.0 };
+  if (pct >= 70) return { grade: 'A', gpa: 4.0 };
+  if (pct >= 60) return { grade: 'A-', gpa: 3.5 };
+  if (pct >= 50) return { grade: 'B', gpa: 3.0 };
+  if (pct >= 40) return { grade: 'C', gpa: 2.0 };
+  if (pct >= 33) return { grade: 'D', gpa: 1.0 };
+  return { grade: 'F', gpa: 0.0 };
+}
+
+// ---- Lookups ----
+async function loadLookups() {
+  const [{ data: types }, { data: classes }, { data: subjects }, { data: sessions }] = await Promise.all([
+    supabaseClient.from('exam_types').select('id, name, is_active').order('name'),
+    supabaseClient.from('classes').select('id, name').eq('is_active', true).order('sort_order'),
+    supabaseClient.from('subjects').select('id, name').eq('is_active', true),
+    supabaseClient.from('academic_sessions').select('id, name, status').order('created_at', { ascending: false }),
+  ]);
+  examTypesCache = types || [];
+  classesCache = classes || [];
+  subjectsCache = subjects || [];
+  sessionsCache = sessions || [];
+
+  document.getElementById('ex-type').innerHTML = examTypesCache.filter(t => t.is_active).map(t => `<option value="${t.id}">${t.name}</option>`).join('') || '<option value="">— No types —</option>';
+  document.getElementById('ex-class').innerHTML = classesCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('') || '<option value="">— No classes —</option>';
+  document.getElementById('es-subject').innerHTML = subjectsCache.map(s => `<option value="${s.id}">${s.name}</option>`).join('') || '<option value="">— No subjects —</option>';
+
+  renderExamTypesTable();
+}
+
+function renderExamTypesTable() {
+  const tbody = document.getElementById('exam-types-tbody');
+  if (!examTypesCache.length) { tbody.innerHTML = '<tr><td colspan="3" class="hint">কোনো পরীক্ষার ধরন নেই / None yet</td></tr>'; return; }
+  tbody.innerHTML = examTypesCache.map(t => `
+    <tr>
+      <td>${t.name}</td>
+      <td><span class="pill pill-${t.is_active ? 'active' : 'inactive'}">${t.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td><button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="toggleExamType('${t.id}', ${t.is_active})">${t.is_active ? 'Deactivate' : 'Activate'}</button></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('form-exam-type').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('et-name').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('exam_types').insert({ name });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('et-name').value = '';
+  showToast('যোগ করা হয়েছে / Added', 'success');
+  await loadLookups();
+});
+
+async function toggleExamType(id, isActive) {
+  const { error } = await supabaseClient.from('exam_types').update({ is_active: !isActive }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadLookups();
+}
+
+// ---- Exam Setup ----
+document.getElementById('form-exam').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const activeSession = sessionsCache.find(s => s.status === 'active') || sessionsCache[0] || null;
+  const payload = {
+    name: document.getElementById('ex-name').value.trim(),
+    exam_type_id: document.getElementById('ex-type').value,
+    class_id: document.getElementById('ex-class').value || null,
+    exam_date: document.getElementById('ex-date').value || null,
+    academic_session_id: activeSession ? activeSession.id : null,
+  };
+  if (!payload.name || !payload.exam_type_id) { showToast('নাম ও ধরন দিন / Provide name and type', 'error'); return; }
+  const { error } = await supabaseClient.from('exams').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('form-exam').reset();
+  showToast('পরীক্ষা তৈরি হয়েছে / Exam created', 'success');
+  await loadExams();
+});
+
+async function loadExams() {
+  const { data, error } = await supabaseClient
+    .from('exams')
+    .select('id, name, exam_date, is_published, exam_types(name), classes(name), exam_subjects(id, full_marks, pass_marks, subjects(name))')
+    .order('created_at', { ascending: false });
+  if (error) { showToast(error.message, 'error'); return; }
+  examsCache = data || [];
+  renderExamsList();
+  populateExamSelects();
+}
+
+function renderExamsList() {
+  const wrap = document.getElementById('exams-list');
+  if (!examsCache.length) { wrap.innerHTML = '<p class="hint">এখনও কোনো পরীক্ষা তৈরি হয়নি / No exams created yet</p>'; return; }
+  wrap.innerHTML = examsCache.map(ex => `
+    <div class="exam-card">
+      <div class="exam-card-head">
+        <div>
+          <strong>${ex.name}</strong>
+          <span class="hint"> — ${ex.exam_types?.name || '—'} · ${ex.classes?.name || 'All classes'} ${ex.exam_date ? '· ' + formatDate(ex.exam_date, getLang()) : ''}</span>
+        </div>
+        <div class="row">
+          <span class="pill pill-${ex.is_published ? 'active' : 'inactive'}">${ex.is_published ? 'Published' : 'Draft'}</span>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="togglePublish('${ex.id}', ${ex.is_published})">${ex.is_published ? 'Unpublish' : 'Publish'}</button>
+          <button class="btn btn-gold" style="padding:5px 10px;font-size:12px;" onclick="openAddSubject('${ex.id}')">+ Subject</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        ${(ex.exam_subjects || []).map(s => `<span class="pill pill-role">${s.subjects?.name || '—'} (${s.full_marks}/${s.pass_marks})</span>`).join('') || '<span class="hint">কোনো বিষয় যোগ হয়নি / No subjects yet</span>'}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function togglePublish(examId, isPublished) {
+  const { error } = await supabaseClient.from('exams').update({ is_published: !isPublished }).eq('id', examId);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadExams();
+}
+
+function openAddSubject(examId) {
+  document.getElementById('es-exam-id').value = examId;
+  openModal('modal-exam-subject');
+}
+
+document.getElementById('form-exam-subject').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    exam_id: document.getElementById('es-exam-id').value,
+    subject_id: document.getElementById('es-subject').value,
+    full_marks: parseFloat(document.getElementById('es-full').value) || 100,
+    pass_marks: parseFloat(document.getElementById('es-pass').value) || 33,
+  };
+  const { error } = await supabaseClient.from('exam_subjects').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('বিষয় যোগ করা হয়েছে / Subject added', 'success');
+  closeModal('modal-exam-subject');
+  await loadExams();
+});
+
+function populateExamSelects() {
+  const opts = examsCache.map(ex => `<option value="${ex.id}">${ex.name} (${ex.classes?.name || 'All'})</option>`).join('') || '<option value="">— No exams —</option>';
+  document.getElementById('re-exam').innerHTML = opts;
+  document.getElementById('ms-exam').innerHTML = opts;
+  document.getElementById('re-exam').addEventListener('change', populateSubjectForEntry);
+  populateSubjectForEntry();
+}
+
+function populateSubjectForEntry() {
+  const examId = document.getElementById('re-exam').value;
+  const exam = examsCache.find(e => e.id === examId);
+  const sel = document.getElementById('re-subject');
+  sel.innerHTML = (exam?.exam_subjects || []).map(s => `<option value="${s.id}" data-full="${s.full_marks}">${s.subjects?.name || '—'} (full: ${s.full_marks})</option>`).join('') || '<option value="">— No subjects on this exam —</option>';
+}
+
+// ---- Result Entry ----
+document.getElementById('btn-load-entry').addEventListener('click', async () => {
+  const examId = document.getElementById('re-exam').value;
+  const examSubjectId = document.getElementById('re-subject').value;
+  const exam = examsCache.find(e => e.id === examId);
+  if (!exam || !examSubjectId) { showToast('পরীক্ষা ও বিষয় নির্বাচন করুন / Select exam and subject', 'error'); return; }
+
+  document.getElementById('entry-card').removeAttribute('hidden');
+  document.getElementById('entry-tbody').innerHTML = '<tr><td colspan="3"><div class="skeleton" style="height:18px;"></div></td></tr>';
+
+  let query = supabaseClient.from('academic_history').select('student_id, students(id, full_name, permanent_student_id, status)');
+  if (exam.classes) query = query.eq('class_id', examsCache.find(e => e.id === examId).class_id || '');
+  const classId = examsCache.find(e => e.id === examId)?.classes ? null : null;
+  // fetch using actual class_id from raw exam row
+  const rawExam = examsCache.find(e => e.id === examId);
+  let hq = supabaseClient.from('academic_history').select('student_id, students(id, full_name, permanent_student_id, status)');
+  const { data: examRow } = await supabaseClient.from('exams').select('class_id').eq('id', examId).single();
+  if (examRow?.class_id) hq = hq.eq('class_id', examRow.class_id);
+  const { data: histRows, error } = await hq;
+  if (error) { showToast(error.message, 'error'); return; }
+
+  const students = (histRows || []).map(r => r.students).filter(s => s && s.status === 'active');
+  const studentIds = students.map(s => s.id);
+
+  let existingMap = {};
+  if (studentIds.length) {
+    const { data: existing } = await supabaseClient.from('results').select('student_id, marks_obtained').eq('exam_subject_id', examSubjectId).in('student_id', studentIds);
+    (existing || []).forEach(r => { existingMap[r.student_id] = r.marks_obtained; });
+  }
+
+  const fullMarks = document.getElementById('re-subject').selectedOptions[0]?.getAttribute('data-full') || 100;
+  document.getElementById('entry-marks-head').textContent = `Marks (out of ${fullMarks})`;
+  document.getElementById('entry-summary').textContent = `${students.length} students`;
+
+  const tbody = document.getElementById('entry-tbody');
+  tbody.innerHTML = students.map(s => `
+    <tr>
+      <td><span class="id-code" style="font-family:var(--font-mono); font-size:12.5px;">${s.permanent_student_id}</span></td>
+      <td>${s.full_name}</td>
+      <td><input type="number" class="marks-input" data-student="${s.id}" min="0" max="${fullMarks}" value="${existingMap[s.id] ?? ''}"></td>
+    </tr>
+  `).join('') || '<tr><td colspan="3" class="hint">এই শ্রেণিতে কোনো ছাত্র নেই / No students in this class</td></tr>';
+});
+
+document.getElementById('btn-save-marks').addEventListener('click', async () => {
+  const examSubjectId = document.getElementById('re-subject').value;
+  const profile = await getMyProfile();
+  const inputs = document.querySelectorAll('.marks-input');
+  const rows = [];
+  inputs.forEach(inp => {
+    if (inp.value !== '') {
+      rows.push({
+        student_id: inp.getAttribute('data-student'),
+        exam_subject_id: examSubjectId,
+        marks_obtained: parseFloat(inp.value),
+        entered_by: profile?.id || null,
+      });
+    }
+  });
+  if (!rows.length) { showToast('কোনো নম্বর দেওয়া হয়নি / No marks entered', 'error'); return; }
+  const btn = document.getElementById('btn-save-marks');
+  setBtnLoading(btn, true);
+  try {
+    const { error } = await supabaseClient.from('results').upsert(rows, { onConflict: 'student_id,exam_subject_id' });
+    if (error) throw error;
+    showToast('নম্বর সংরক্ষিত হয়েছে / Marks saved', 'success');
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+// ---- Marksheet ----
+let searchTimeout;
+document.getElementById('ms-student-search').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  document.getElementById('ms-student-id').value = '';
+  if (!q) { document.getElementById('ms-student-results').style.display = 'none'; return; }
+  searchTimeout = setTimeout(async () => {
+    const { data } = await supabaseClient.from('students').select('id, full_name, permanent_student_id').or(`full_name.ilike.%${q}%,permanent_student_id.ilike.%${q}%`).limit(8);
+    const box = document.getElementById('ms-student-results');
+    if (!data || !data.length) { box.style.display = 'none'; return; }
+    box.innerHTML = data.map(s => `
+      <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--color-border); font-size:13.5px;" onclick="pickMsStudent('${s.id}','${s.full_name.replace(/'/g,"\\'")}','${s.permanent_student_id}')">
+        <strong>${s.full_name}</strong> <span class="hint">${s.permanent_student_id}</span>
+      </div>
+    `).join('');
+    box.style.display = 'block';
+  }, 250);
+});
+
+function pickMsStudent(id, name, permId) {
+  document.getElementById('ms-student-id').value = id;
+  document.getElementById('ms-student-search').value = `${name} (${permId})`;
+  document.getElementById('ms-student-results').style.display = 'none';
+}
+
+document.getElementById('btn-load-marksheet').addEventListener('click', async () => {
+  const examId = document.getElementById('ms-exam').value;
+  const studentId = document.getElementById('ms-student-id').value;
+  if (!examId || !studentId) { showToast('পরীক্ষা ও ছাত্র নির্বাচন করুন / Select exam and student', 'error'); return; }
+
+  const { data: student } = await supabaseClient.from('students').select('full_name, permanent_student_id').eq('id', studentId).single();
+  const { data: examSubjects } = await supabaseClient.from('exam_subjects').select('id, full_marks, pass_marks, subjects(name)').eq('exam_id', examId);
+  const esIds = (examSubjects || []).map(s => s.id);
+  const { data: results } = await supabaseClient.from('results').select('exam_subject_id, marks_obtained').in('exam_subject_id', esIds.length ? esIds : ['00000000-0000-0000-0000-000000000000']);
+
+  const resultMap = {};
+  (results || []).forEach(r => { resultMap[r.exam_subject_id] = r.marks_obtained; });
+
+  let totalObtained = 0, totalFull = 0, gpaSum = 0, subjectCount = 0, failed = false;
+  const rows = (examSubjects || []).map(es => {
+    const marks = resultMap[es.id];
+    subjectCount++;
+    totalFull += Number(es.full_marks);
+    if (marks !== undefined && marks !== null) {
+      totalObtained += Number(marks);
+      const pct = (Number(marks) / Number(es.full_marks)) * 100;
+      const { grade, gpa } = calcGrade(pct);
+      gpaSum += gpa;
+      if (Number(marks) < Number(es.pass_marks)) failed = true;
+      return `<tr><td>${es.subjects?.name || '—'}</td><td>${marks}/${es.full_marks}</td><td class="grade-${grade[0]}">${grade}</td></tr>`;
+    }
+    return `<tr><td>${es.subjects?.name || '—'}</td><td class="hint">Not entered</td><td>—</td></tr>`;
+  }).join('');
+
+  const overallPct = totalFull ? (totalObtained / totalFull) * 100 : 0;
+  const overallGpa = subjectCount ? (gpaSum / subjectCount).toFixed(2) : '0.00';
+  const overallGrade = failed ? 'F' : calcGrade(overallPct).grade;
+
+  document.getElementById('marksheet-result').innerHTML = `
+    <div class="card card-pad">
+      <div class="row" style="justify-content:space-between; margin-bottom: var(--space-4);">
+        <div>
+          <strong style="font-size:16px;">${student?.full_name || '—'}</strong>
+          <div class="hint">${student?.permanent_student_id || ''}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="hint">Overall</div>
+          <div style="font-size:20px; font-weight:700;" class="grade-${overallGrade === 'F' ? 'F' : 'A'}">${overallGrade} · GPA ${overallGpa}</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Subject</th><th>Marks</th><th>Grade</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="3" class="hint">কোনো বিষয় নেই / No subjects</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+});
+
+(async () => {
+  const profile = await renderShell('exams');
+  if (!profile) return;
+  await loadLookups();
+  await loadExams();
+
+  const canManage = ['founder', 'admin', 'teacher'].includes(profile.role);
+  if (!canManage) {
+    // Students/guardians/committee only see the Marksheet tab
+    document.querySelectorAll('.tab-btn').forEach(b => { if (b.dataset.tab !== 'marksheet') b.style.display = 'none'; });
+    document.querySelector('.tab-btn[data-tab="marksheet"]').click();
+  }
+})();
+</script>
+</body>
+</html>

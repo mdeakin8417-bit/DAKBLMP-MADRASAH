@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DAKBLMP MADRASAH — Sign in</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  #splash-screen {
+    position: fixed; inset: 0; z-index: 999;
+    background: linear-gradient(160deg, var(--color-green-900), var(--color-green-800) 55%, var(--color-green-700));
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    animation: splashFadeOut 0.6s ease 2.1s forwards;
+  }
+  #splash-screen::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle at 10px 10px, rgba(201,162,39,0.16) 1.5px, transparent 1.6px);
+    background-size: 20px 20px;
+  }
+  .splash-arabic {
+    font-family: 'Amiri', serif;
+    font-size: 68px;
+    color: #fff;
+    direction: rtl;
+    position: relative;
+    opacity: 0;
+    animation: splashIn 0.9s ease 0.15s forwards;
+  }
+  .splash-sub {
+    font-size: 13.5px;
+    color: var(--color-gold-400);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: var(--space-3);
+    position: relative;
+    opacity: 0;
+    animation: splashIn 0.9s ease 0.55s forwards;
+  }
+  .splash-org {
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: rgba(255,255,255,0.85);
+    margin-top: var(--space-2);
+    position: relative;
+    opacity: 0;
+    animation: splashIn 0.9s ease 0.8s forwards;
+  }
+  @keyframes splashIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes splashFadeOut {
+    from { opacity: 1; visibility: visible; }
+    to { opacity: 0; visibility: hidden; pointer-events: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #splash-screen, .splash-arabic, .splash-sub, .splash-org { animation: none !important; opacity: 1 !important; }
+    #splash-screen { display: none !important; }
+  }
+</style>
+</head>
+<body data-lang="bn">
+
+<div id="splash-screen" aria-hidden="true">
+  <div class="splash-arabic">مرحباً</div>
+  <div class="splash-sub">Marhaban · স্বাগতম · Welcome</div>
+  <div class="splash-org">DAKBLMP MADRASAH</div>
+</div>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="row" style="justify-content: center; margin-bottom: var(--space-4);">
+      <div class="lang-switch">
+        <button data-lang-btn="bn">বাংলা</button>
+        <button data-lang-btn="en">English</button>
+      </div>
+    </div>
+
+    <div class="auth-mark">DM</div>
+    <div class="auth-title display" data-i18n="app_name">DAKBLMP MADRASAH</div>
+
+    <!-- ===== LOGIN VIEW ===== -->
+    <div id="view-login">
+      <p class="auth-sub" data-i18n="login_sub">আপনার মাদ্রাসা অ্যাকাউন্টে লগইন করুন</p>
+      <form id="form-login" class="stack" novalidate>
+        <div class="field">
+          <label data-i18n="email">ইমেইল অথবা ফোন</label>
+          <input type="email" id="login-email" required autocomplete="username">
+        </div>
+        <div class="field">
+          <label data-i18n="password">পাসওয়ার্ড</label>
+          <input type="password" id="login-password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="btn-login">
+          <span data-i18n="login_btn">লগইন করুন</span>
+        </button>
+        <div class="row" style="justify-content: space-between;">
+          <button type="button" class="btn-link" id="link-forgot" style="background:none;border:none;color:var(--color-green-800);font-size:13px;cursor:pointer;padding:0;" data-i18n="forgot_password">পাসওয়ার্ড ভুলে গেছেন?</button>
+        </div>
+      </form>
+      <div class="motif-divider" style="margin: var(--space-5) 0;"></div>
+      <p style="text-align:center; font-size: 13.5px; color: var(--color-ink-soft);">
+        <span data-i18n="no_account">নতুন ব্যবহারকারী?</span>
+        <button type="button" id="link-signup" style="background:none;border:none;color:var(--color-green-800);font-weight:700;cursor:pointer;padding:0;" data-i18n="create_account">অ্যাকাউন্ট তৈরি করুন</button>
+      </p>
+    </div>
+
+    <!-- ===== SIGNUP VIEW ===== -->
+    <div id="view-signup" hidden>
+      <p class="auth-sub" data-i18n="login_sub">আপনার মাদ্রাসা অ্যাকাউন্টে লগইন করুন</p>
+      <form id="form-signup" class="stack" novalidate>
+        <div class="field">
+          <label data-i18n="full_name">পূর্ণ নাম</label>
+          <input type="text" id="signup-name" required autocomplete="name">
+        </div>
+        <div class="field">
+          <label data-i18n="email">ইমেইল অথবা ফোন</label>
+          <input type="email" id="signup-email" required autocomplete="username">
+        </div>
+        <div class="field">
+          <label data-i18n="password">পাসওয়ার্ড</label>
+          <input type="password" id="signup-password" required minlength="6" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label data-i18n="role">আমি একজন</label>
+          <select id="signup-role">
+            <option value="student" data-i18n="role_student">ছাত্র</option>
+            <option value="guardian" data-i18n="role_guardian">অভিভাবক</option>
+            <option value="teacher" data-i18n="role_teacher">শিক্ষক</option>
+            <option value="committee" data-i18n="role_committee">কমিটি</option>
+            <option value="admin" data-i18n="role_admin">অ্যাডমিন</option>
+          </select>
+          <span class="hint">অ্যাডমিন/শিক্ষক অনুরোধ পরে প্রতিষ্ঠাতা কর্তৃক অনুমোদিত হবে।</span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="btn-signup">
+          <span data-i18n="signup_btn">অ্যাকাউন্ট তৈরি করুন</span>
+        </button>
+      </form>
+      <div class="motif-divider" style="margin: var(--space-5) 0;"></div>
+      <p style="text-align:center; font-size: 13.5px; color: var(--color-ink-soft);">
+        <span data-i18n="have_account">আগে থেকেই অ্যাকাউন্ট আছে?</span>
+        <button type="button" id="link-back-login" style="background:none;border:none;color:var(--color-green-800);font-weight:700;cursor:pointer;padding:0;" data-i18n="sign_in_link">লগইন করুন</button>
+      </p>
+    </div>
+
+    <!-- ===== RESET VIEW ===== -->
+    <div id="view-reset" hidden>
+      <p class="auth-sub" data-i18n="reset_sub">আমরা আপনাকে রিসেট লিংক ইমেইল করব</p>
+      <form id="form-reset" class="stack" novalidate>
+        <div class="field">
+          <label data-i18n="email">ইমেইল অথবা ফোন</label>
+          <input type="email" id="reset-email" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="btn-reset">
+          <span data-i18n="send_reset">রিসেট লিংক পাঠান</span>
+        </button>
+      </form>
+      <p style="text-align:center; margin-top: var(--space-4);">
+        <button type="button" id="link-back-login-2" style="background:none;border:none;color:var(--color-green-800);font-weight:700;cursor:pointer;padding:0;" data-i18n="back_to_login">লগইনে ফিরে যান</button>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script>
+const viewLogin = document.getElementById('view-login');
+const viewSignup = document.getElementById('view-signup');
+const viewReset = document.getElementById('view-reset');
+
+function showView(view) {
+  [viewLogin, viewSignup, viewReset].forEach(v => v.setAttribute('hidden', ''));
+  view.removeAttribute('hidden');
+}
+
+document.getElementById('link-signup').addEventListener('click', () => showView(viewSignup));
+document.getElementById('link-back-login').addEventListener('click', () => showView(viewLogin));
+document.getElementById('link-back-login-2').addEventListener('click', () => showView(viewLogin));
+document.getElementById('link-forgot').addEventListener('click', () => showView(viewReset));
+
+document.getElementById('form-login').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-login');
+  setBtnLoading(btn, true);
+  try {
+    await signIn({
+      email: document.getElementById('login-email').value.trim(),
+      password: document.getElementById('login-password').value
+    });
+    window.location.href = 'dashboard.html';
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+document.getElementById('form-signup').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-signup');
+  setBtnLoading(btn, true);
+  try {
+    const result = await signUp({
+      email: document.getElementById('signup-email').value.trim(),
+      password: document.getElementById('signup-password').value,
+      fullName: document.getElementById('signup-name').value.trim(),
+      role: document.getElementById('signup-role').value
+    });
+    if (result.session) {
+      window.location.href = 'dashboard.html';
+    } else {
+      showToast('ইমেইল যাচাই করুন, তারপর লগইন করুন / Check your email, then sign in', 'success');
+      showView(viewLogin);
+    }
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+document.getElementById('form-reset').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-reset');
+  setBtnLoading(btn, true);
+  try {
+    await sendPasswordReset(document.getElementById('reset-email').value.trim());
+    showToast('রিসেট লিংক পাঠানো হয়েছে / Reset link sent', 'success');
+    showView(viewLogin);
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+// If already logged in, skip straight to dashboard
+(async () => {
+  const session = await getSession();
+  if (session) window.location.href = 'dashboard.html';
+})();
+</script>
+</body>
+</html>

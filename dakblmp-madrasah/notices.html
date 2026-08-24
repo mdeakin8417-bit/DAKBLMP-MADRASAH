@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Notices — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.tabs { display:flex; gap:4px; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x:auto; }
+.tab-btn { padding: 10px 16px; border:none; background:none; font-size:13.5px; font-weight:600; color: var(--color-ink-soft); cursor:pointer; border-bottom: 2.5px solid transparent; white-space:nowrap; }
+.tab-btn.active { color: var(--color-green-800); border-bottom-color: var(--color-green-800); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+.inline-form { display:flex; gap: var(--space-2); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-5); }
+.inline-form .field { margin-bottom: 0; min-width: 140px; }
+.notice-card { border:1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-3); background: var(--color-surface); position:relative; }
+.notice-card .accent-bar { position:absolute; left:0; top:0; bottom:0; width:4px; background: var(--color-gold-400); border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.notice-card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; padding-left: 10px; }
+.notice-title { font-size: 15px; font-weight:700; color: var(--color-green-900); }
+.notice-meta { font-size: 11.5px; color: var(--color-muted); margin-top:2px; }
+.notice-content { font-size: 13.5px; color: var(--color-ink-soft); margin-top: var(--space-2); padding-left: 10px; white-space: pre-wrap; }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2 data-i18n="nav_notices">নোটিশ</h2>
+        <button class="btn btn-primary" id="btn-new-notice" hidden>+ নতুন নোটিশ / New notice</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="list">সব নোটিশ / All Notices</button>
+        <button class="tab-btn" data-tab="categories" id="tab-categories-btn" hidden>ক্যাটাগরি / Categories</button>
+      </div>
+
+      <div class="tab-panel active" id="panel-list">
+        <div id="notices-wrap"><div class="skeleton" style="height:90px;"></div></div>
+        <div id="notices-empty" class="empty-state" hidden>
+          <div class="glyph">&#128276;</div>
+          <h3>এখনও কোনো নোটিশ নেই / No notices yet</h3>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panel-categories">
+        <form id="form-category" class="inline-form">
+          <div class="field"><input type="text" id="cat-name" placeholder="e.g. Academic" required style="width:220px;"></div>
+          <button type="submit" class="btn btn-primary">+ যোগ করুন / Add</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th data-i18n="status">Status</th><th></th></tr></thead>
+            <tbody id="categories-tbody"><tr><td colspan="3"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<!-- New notice modal -->
+<div class="modal-backdrop" id="modal-notice" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>নতুন নোটিশ / New notice</h3>
+      <button class="modal-close" onclick="closeModal('modal-notice')">&times;</button>
+    </div>
+    <form id="form-notice" class="stack">
+      <div class="field">
+        <label>শিরোনাম / Title</label>
+        <input type="text" id="n-title" required>
+      </div>
+      <div class="field">
+        <label>বিষয়বস্তু / Content</label>
+        <textarea id="n-content" rows="4"></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>ক্যাটাগরি / Category</label>
+          <select id="n-category"><option value="">—</option></select>
+        </div>
+        <div class="field">
+          <label>লক্ষ্য / Target audience</label>
+          <select id="n-target">
+            <option value="">সবাই / Everyone</option>
+            <option value="teacher">শিক্ষক / Teacher</option>
+            <option value="student">ছাত্র / Student</option>
+            <option value="guardian">অভিভাবক / Guardian</option>
+            <option value="committee">কমিটি / Committee</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>প্রকাশের সময় / Publish at</label>
+          <input type="datetime-local" id="n-publish-at">
+        </div>
+        <div class="field">
+          <label>মেয়াদ শেষ / Expiry (optional)</label>
+          <input type="datetime-local" id="n-expiry">
+        </div>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top: var(--space-2);">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-notice')" data-i18n="cancel">বাতিল</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-notice">প্রকাশ করুন / Publish</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+let categoriesCache = [];
+let canManage = false;
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+async function loadCategories() {
+  const { data, error } = await supabaseClient.from('notice_categories').select('id, name, is_active').order('name');
+  if (error) { showToast(error.message, 'error'); return; }
+  categoriesCache = data || [];
+  document.getElementById('n-category').innerHTML = '<option value="">—</option>' + categoriesCache.filter(c => c.is_active).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  renderCategoriesTable();
+}
+
+function renderCategoriesTable() {
+  const tbody = document.getElementById('categories-tbody');
+  if (!categoriesCache.length) { tbody.innerHTML = '<tr><td colspan="3" class="hint">কোনো ক্যাটাগরি নেই / None yet</td></tr>'; return; }
+  tbody.innerHTML = categoriesCache.map(c => `
+    <tr>
+      <td>${c.name}</td>
+      <td><span class="pill pill-${c.is_active ? 'active' : 'inactive'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td><button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="toggleCategory('${c.id}', ${c.is_active})">${c.is_active ? 'Deactivate' : 'Activate'}</button></td>
+    </tr>
+  `).join('');
+}
+
+async function toggleCategory(id, isActive) {
+  const { error } = await supabaseClient.from('notice_categories').update({ is_active: !isActive }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadCategories();
+}
+
+document.getElementById('form-category').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('cat-name').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('notice_categories').insert({ name });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('cat-name').value = '';
+  showToast('যোগ করা হয়েছে / Added', 'success');
+  await loadCategories();
+});
+
+async function loadNotices() {
+  const { data, error } = await supabaseClient
+    .from('notices')
+    .select('id, title, content, target_role, publish_at, expiry_at, is_published, notice_categories(name)')
+    .order('publish_at', { ascending: false });
+  const wrap = document.getElementById('notices-wrap');
+  const empty = document.getElementById('notices-empty');
+  if (error) { wrap.innerHTML = `<p class="hint">${error.message}</p>`; return; }
+  if (!data || !data.length) { wrap.innerHTML = ''; empty.removeAttribute('hidden'); return; }
+  const myProfile = await getMyProfile();
+  const visible = canManage ? data : data.filter(n => !n.target_role || n.target_role === myProfile?.role);
+  if (!visible.length) { wrap.innerHTML = ''; empty.removeAttribute('hidden'); return; }
+  empty.setAttribute('hidden', '');
+  wrap.innerHTML = visible.map(n => `
+    <div class="notice-card">
+      <div class="accent-bar"></div>
+      <div class="notice-card-head">
+        <div>
+          <div class="notice-title">${n.title}</div>
+          <div class="notice-meta">
+            ${n.notice_categories?.name ? n.notice_categories.name + ' · ' : ''}
+            ${n.target_role ? 'For: ' + n.target_role : 'সবার জন্য / Everyone'}
+            · ${formatDate(n.publish_at, getLang())}
+            ${n.expiry_at ? ' · Expires ' + formatDate(n.expiry_at, getLang()) : ''}
+          </div>
+        </div>
+        ${canManage ? `
+          <div class="row">
+            <span class="pill pill-${n.is_published ? 'active' : 'inactive'}">${n.is_published ? 'Published' : 'Draft'}</span>
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="toggleNoticePublish('${n.id}', ${n.is_published})">${n.is_published ? 'Unpublish' : 'Publish'}</button>
+            <button class="btn btn-danger" style="padding:5px 10px;font-size:12px;" onclick="deleteNotice('${n.id}')">Delete</button>
+          </div>
+        ` : ''}
+      </div>
+      ${n.content ? `<div class="notice-content">${n.content}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+async function toggleNoticePublish(id, isPublished) {
+  const { error } = await supabaseClient.from('notices').update({ is_published: !isPublished }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadNotices();
+}
+
+async function deleteNotice(id) {
+  const { error } = await supabaseClient.from('notices').delete().eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('মুছে ফেলা হয়েছে / Deleted', 'success');
+  await loadNotices();
+}
+
+document.getElementById('btn-new-notice').addEventListener('click', () => {
+  document.getElementById('form-notice').reset();
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('n-publish-at').value = now.toISOString().slice(0, 16);
+  openModal('modal-notice');
+});
+
+document.getElementById('form-notice').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-notice');
+  setBtnLoading(btn, true);
+  try {
+    const profile = await getMyProfile();
+    const payload = {
+      title: document.getElementById('n-title').value.trim(),
+      content: document.getElementById('n-content').value.trim() || null,
+      category_id: document.getElementById('n-category').value || null,
+      target_role: document.getElementById('n-target').value || null,
+      publish_at: document.getElementById('n-publish-at').value ? new Date(document.getElementById('n-publish-at').value).toISOString() : new Date().toISOString(),
+      expiry_at: document.getElementById('n-expiry').value ? new Date(document.getElementById('n-expiry').value).toISOString() : null,
+      is_published: true,
+      created_by: profile?.id || null,
+    };
+    const { error } = await supabaseClient.from('notices').insert(payload);
+    if (error) throw error;
+    showToast('নোটিশ প্রকাশিত হয়েছে / Notice published', 'success');
+    closeModal('modal-notice');
+    await loadNotices();
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+(async () => {
+  const profile = await renderShell('notices');
+  if (!profile) return;
+  canManage = ['founder', 'admin'].includes(profile.role);
+  if (canManage) {
+    document.getElementById('btn-new-notice').removeAttribute('hidden');
+    document.getElementById('tab-categories-btn').removeAttribute('hidden');
+  }
+  await loadCategories();
+  await loadNotices();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ID Card — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* Standard ID card ratio: 85.6mm x 54mm (credit-card size) */
+.card-stage {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: var(--space-6) 0;
+}
+.id-card {
+  width: 337px;   /* 85.6mm @ ~96dpi scaled for screen legibility */
+  height: 213px;  /* 54mm */
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow-pop);
+  font-family: var(--font-body-en);
+}
+.id-card.front {
+  background: linear-gradient(150deg, var(--color-green-900) 0%, var(--color-green-800) 55%, var(--color-green-700) 100%);
+  color: #fff;
+}
+.id-card.front::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle at 8px 8px, rgba(201,162,39,0.16) 1.4px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+.id-card-header {
+  position: relative;
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px 8px;
+}
+.id-card-header .mark {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: linear-gradient(155deg, var(--color-gold-400), var(--color-gold-600));
+  display:flex; align-items:center; justify-content:center;
+  font-family: var(--font-display); font-weight:700; font-size: 12px; color: var(--color-green-900);
+  flex-shrink: 0;
+}
+.id-card-header .org-name { font-family: var(--font-display); font-size: 12.5px; line-height:1.2; }
+.id-card-header .org-sub { font-size: 8px; color: var(--color-gold-400); letter-spacing:0.06em; text-transform:uppercase; }
+
+.id-card-body { position:relative; display:flex; gap: 12px; padding: 4px 14px 10px; align-items:flex-start; }
+.id-photo-box { width: 62px; height: 74px; border-radius: 8px; background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-size:22px; flex-shrink:0; }
+.id-info { min-width:0; flex:1; }
+.id-name { font-size: 14.5px; font-weight: 700; line-height:1.2; }
+.id-meta-row { font-size: 9.5px; color: rgba(255,255,255,0.8); margin-top: 4px; display:flex; flex-direction:column; gap:2px; }
+.id-meta-row b { color: #fff; }
+
+.id-card-footer {
+  position: absolute; left:0; right:0; bottom:0;
+  padding: 8px 14px 10px;
+  display:flex; justify-content:space-between; align-items:flex-end;
+}
+.id-code-box .label { font-size: 7.5px; text-transform: uppercase; letter-spacing:0.08em; color: var(--color-gold-400); }
+.id-code-box .code { font-family: var(--font-mono); font-weight:700; font-size: 14px; letter-spacing: 0.04em; }
+.id-session-box { font-size: 8.5px; color: rgba(255,255,255,0.75); text-align:right; }
+
+.id-card.back {
+  background: var(--color-paper);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+  display:flex; flex-direction:column;
+  padding: 14px;
+}
+.id-card.back .motif-divider { margin-bottom: 8px; }
+.id-back-title { font-family: var(--font-display); font-size: 11.5px; color: var(--color-green-900); margin-bottom: 4px; }
+.id-back-text { font-size: 8.5px; color: var(--color-ink-soft); line-height: 1.5; }
+.id-back-footer { margin-top: auto; display:flex; justify-content: space-between; align-items:flex-end; font-size: 8px; color: var(--color-muted); }
+.id-signature-line { border-top: 1px solid var(--color-border); width: 90px; text-align:center; padding-top:3px; }
+
+@media print {
+  .app-shell > *:not(.main), .topbar, .bottom-nav, .section-head, .card-search-wrap { display: none !important; }
+  .content { padding: 0 !important; }
+  .card-stage { padding: 0; }
+  .id-card { box-shadow: none; break-inside: avoid; }
+  body { background: #fff; }
+}
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2>আইডি কার্ড / ID Card</h2>
+      </div>
+
+      <div class="card card-pad card-search-wrap" style="margin-bottom: var(--space-5); max-width: 460px;">
+        <div class="field">
+          <label>ছাত্র খুঁজুন / Search student</label>
+          <input type="text" id="id-student-search" placeholder="নাম বা আইডি লিখুন... / Type name or ID">
+          <div id="id-student-results" class="card" style="margin-top:4px; max-height:180px; overflow-y:auto; display:none;"></div>
+        </div>
+        <button class="btn btn-primary" id="btn-print-card" disabled>🖨️ প্রিন্ট করুন / Print card</button>
+      </div>
+
+      <div id="card-preview-wrap">
+        <div class="empty-state">
+          <div class="glyph">&#128100;</div>
+          <h3>একজন ছাত্র নির্বাচন করুন / Select a student</h3>
+          <p>উপরে সার্চ করে একজন ছাত্র বাছাই করলে তার আইডি কার্ড এখানে প্রিভিউ হবে।</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+let orgInfo = { name: 'DAKBLMP MADRASAH', address: '' };
+let searchTimeout;
+
+async function loadOrgInfo() {
+  const { data } = await supabaseClient.from('settings').select('value').eq('key', 'madrasah_general').maybeSingle();
+  if (data?.value?.name) orgInfo.name = data.value.name;
+  if (data?.value?.address) orgInfo.address = data.value.address;
+}
+
+document.getElementById('id-student-search').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (!q) { document.getElementById('id-student-results').style.display = 'none'; return; }
+  searchTimeout = setTimeout(async () => {
+    const { data } = await supabaseClient
+      .from('students')
+      .select('id, full_name, permanent_student_id')
+      .or(`full_name.ilike.%${q}%,permanent_student_id.ilike.%${q}%`)
+      .eq('status', 'active')
+      .limit(8);
+    const box = document.getElementById('id-student-results');
+    if (!data || !data.length) { box.style.display = 'none'; return; }
+    box.innerHTML = data.map(s => `
+      <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--color-border); font-size:13.5px;" onclick="loadCard('${s.id}')">
+        <strong>${s.full_name}</strong> <span class="hint">${s.permanent_student_id}</span>
+      </div>
+    `).join('');
+    box.style.display = 'block';
+  }, 250);
+});
+
+async function loadCard(studentId) {
+  document.getElementById('id-student-results').style.display = 'none';
+
+  const { data: student } = await supabaseClient.from('students').select('*').eq('id', studentId).single();
+  const { data: hist } = await supabaseClient
+    .from('academic_history')
+    .select('classes(name), sections(name), academic_sessions(name, status)')
+    .eq('student_id', studentId);
+  const current = (hist || []).find(h => h.academic_sessions?.status === 'active') || (hist || [])[0];
+
+  document.getElementById('id-student-search').value = `${student.full_name} (${student.permanent_student_id})`;
+  document.getElementById('btn-print-card').disabled = false;
+
+  const className = current?.classes?.name || '—';
+  const sectionName = current?.sections?.name || '';
+  const sessionName = current?.academic_sessions?.name || '—';
+
+  document.getElementById('card-preview-wrap').innerHTML = `
+    <div class="card-stage">
+      <div class="id-card front">
+        <div class="id-card-header">
+          <div class="mark">DM</div>
+          <div>
+            <div class="org-name">${orgInfo.name}</div>
+            <div class="org-sub">Student ID Card</div>
+          </div>
+        </div>
+        <div class="id-card-body">
+          <div class="id-photo-box">${initials(student.full_name)}</div>
+          <div class="id-info">
+            <div class="id-name">${student.full_name}</div>
+            <div class="id-meta-row">
+              <span>Class: <b>${className}${sectionName ? ' · ' + sectionName : ''}</b></span>
+              <span>Guardian: <b>${student.guardian_contact || '—'}</b></span>
+            </div>
+          </div>
+        </div>
+        <div class="id-card-footer">
+          <div class="id-code-box">
+            <div class="label">Permanent ID</div>
+            <div class="code">${student.permanent_student_id}</div>
+          </div>
+          <div class="id-session-box">Session<br><b>${sessionName}</b></div>
+        </div>
+      </div>
+
+      <div class="id-card back">
+        <div class="motif-divider"></div>
+        <div class="id-back-title">${orgInfo.name}</div>
+        <div class="id-back-text">
+          ${orgInfo.address ? orgInfo.address + '<br>' : ''}
+          This card is the property of ${orgInfo.name}. If found, please return to the madrasah office.
+          এই কার্ডটি হারিয়ে গেলে অনুগ্রহ করে মাদ্রাসা অফিসে ফেরত দিন।
+        </div>
+        <div class="id-back-footer">
+          <span>ID: ${student.permanent_student_id}</span>
+          <div class="id-signature-line">Authorized signature</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+document.getElementById('btn-print-card').addEventListener('click', () => window.print());
+
+(async () => {
+  const profile = await renderShell('idcard');
+  if (!profile) return;
+  if (!['founder', 'admin'].includes(profile.role)) {
+    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="glyph">&#128274;</div><h3>Access restricted</h3><p>এই পাতা শুধু admin/founder দেখতে পারবেন।</p></div>';
+    return;
+  }
+  await loadOrgInfo();
+})();
+</script>
+</body>
+</html>

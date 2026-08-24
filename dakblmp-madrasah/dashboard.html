@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Dashboard — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2 data-i18n="dashboard_title">ড্যাশবোর্ড</h2>
+      </div>
+
+      <div class="stat-grid" id="stat-grid">
+        <div class="stat-card"><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l" data-i18n="total_students">মোট ছাত্রছাত্রী</div></div>
+        <div class="stat-card"><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l" data-i18n="total_teachers">শিক্ষকবৃন্দ</div></div>
+        <div class="stat-card"><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l" data-i18n="today_attendance">আজ উপস্থিত</div></div>
+        <div class="stat-card"><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l" data-i18n="fees_due">বকেয়া ফি</div></div>
+      </div>
+
+      <div style="height: var(--space-5);"></div>
+
+      <div class="grid-2" style="align-items: start;">
+        <div class="card card-pad">
+          <h3 style="font-size:15px; margin-bottom: var(--space-4);" data-i18n="recent_notices">সাম্প্রতিক নোটিশ</h3>
+          <div id="notices-list" class="stack"></div>
+        </div>
+
+        <div class="card card-pad">
+          <h3 style="font-size:15px; margin-bottom: var(--space-4);" data-i18n="quick_actions">দ্রুত কার্যক্রম</h3>
+          <div class="stack" id="quick-actions"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+(async () => {
+  const profile = await renderShell('dashboard');
+  if (!profile) return;
+
+  const canManage = ['founder', 'admin'].includes(profile.role);
+  const canTeach = canManage || profile.role === 'teacher';
+
+  // Quick actions, role-aware
+  const actions = [];
+  if (canManage) actions.push({ label: 'add_student', href: 'students.html' });
+  if (canTeach) actions.push({ label: 'take_attendance', href: 'attendance.html' });
+  if (canManage) actions.push({ label: 'record_payment', href: 'fees.html' });
+  if (canManage) actions.push({ label: 'post_notice', href: 'notices.html' });
+  document.getElementById('quick-actions').innerHTML = actions.map(a => `
+    <a class="btn btn-ghost btn-block" href="${a.href}" style="justify-content:flex-start;" data-i18n="${a.label}"></a>
+  `).join('') || '<p class="hint">—</p>';
+  applyI18n();
+
+  // Stats
+  const statCards = document.querySelectorAll('#stat-grid .stat-card');
+  try {
+    const [{ count: studentCount }, { count: teacherCount }] = await Promise.all([
+      supabaseClient.from('students').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabaseClient.from('teachers').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    ]);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: presentStatus } = await supabaseClient.from('attendance_statuses').select('id').eq('name', 'Present').single();
+    let presentCount = 0;
+    if (presentStatus) {
+      const { count } = await supabaseClient.from('attendance').select('*', { count: 'exact', head: true }).eq('attendance_date', today).eq('status_id', presentStatus.id);
+      presentCount = count || 0;
+    }
+
+    const { count: dueCount } = await supabaseClient.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'due');
+
+    const values = [studentCount || 0, teacherCount || 0, presentCount || 0, dueCount || 0];
+    statCards.forEach((card, idx) => {
+      card.querySelector('.n').outerHTML = `<div class="n">${values[idx]}</div>`;
+    });
+  } catch (err) {
+    console.error(err);
+    statCards.forEach(card => { card.querySelector('.n').outerHTML = '<div class="n">—</div>'; });
+  }
+
+  // Recent notices
+  try {
+    const { data: notices, error } = await supabaseClient
+      .from('notices')
+      .select('id, title, publish_at')
+      .eq('is_published', true)
+      .order('publish_at', { ascending: false })
+      .limit(5);
+    if (error) throw error;
+    const list = document.getElementById('notices-list');
+    if (!notices || notices.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="glyph">&#128276;</div><p>${t('no_students_sub') === t('no_students_sub') ? '' : ''}</p></div>`;
+      list.innerHTML = `<p class="hint" style="text-align:center; padding: var(--space-4) 0;">—</p>`;
+    } else {
+      list.innerHTML = notices.map(n => `
+        <div class="row" style="justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--color-border);">
+          <span style="font-size: 14px;">${n.title}</span>
+          <span class="hint">${formatDate(n.publish_at, getLang())}</span>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    console.error(err);
+  }
+})();
+</script>
+</body>
+</html>

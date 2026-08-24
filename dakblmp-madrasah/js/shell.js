@@ -1,0 +1,100 @@
+// ============================================================
+// App shell — sidebar (desktop) + bottom nav (mobile) + topbar
+// Renders based on the signed-in user's role.
+// Usage: call renderShell('students') on each protected page,
+// where the arg is the current page's nav key.
+// ============================================================
+
+const NAV_ITEMS = [
+  { key: 'dashboard', href: 'dashboard.html', icon: '&#8962;', label: 'nav_dashboard', roles: 'all' },
+  { key: 'my-children', href: 'guardian.html', icon: '&#128118;', label: 'nav_my_children', roles: ['guardian'] },
+  { key: 'students', href: 'students.html', icon: '&#128101;', label: 'nav_students', roles: ['founder','admin','teacher'] },
+  { key: 'teachers', href: 'teachers.html', icon: '&#127891;', label: 'nav_teachers', roles: ['founder','admin'] },
+  { key: 'attendance', href: 'attendance.html', icon: '&#10003;', label: 'nav_attendance', roles: ['founder','admin','teacher'] },
+  { key: 'fees', href: 'fees.html', icon: '&#2547;', label: 'nav_fees', roles: ['founder','admin'] },
+  { key: 'finance', href: 'finance.html', icon: '&#128184;', label: 'nav_finance', roles: ['founder','admin'] },
+  { key: 'exams', href: 'exams.html', icon: '&#128220;', label: 'nav_exams', roles: 'all' },
+  { key: 'notices', href: 'notices.html', icon: '&#128276;', label: 'nav_notices', roles: 'all' },
+  { key: 'events', href: 'events.html', icon: '&#128197;', label: 'nav_events', roles: 'all' },
+  { key: 'islamic', href: 'islamic.html', icon: '&#9770;', label: 'nav_islamic', roles: 'all' },
+  { key: 'committee', href: 'committee.html', icon: '&#127970;', label: 'nav_committee', roles: 'all' },
+  { key: 'settings', href: 'settings.html', icon: '&#9881;', label: 'nav_settings', roles: ['founder','admin'] },
+  { key: 'idcard', href: 'idcard.html', icon: '&#128179;', label: 'nav_idcard', roles: ['founder','admin'] },
+  { key: 'reports', href: 'reports.html', icon: '&#128202;', label: 'nav_reports', roles: ['founder','admin'] },
+];
+
+function itemVisible(item, role) {
+  return item.roles === 'all' || item.roles.includes(role);
+}
+
+async function renderShell(activeKey) {
+  const profile = await requireAuth();
+  if (!profile) return null;
+
+  const visibleItems = NAV_ITEMS.filter(i => itemVisible(i, profile.role));
+
+  // Sidebar (desktop)
+  const sidebarHtml = `
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="mark">DM</div>
+        <div>
+          <div class="name" data-i18n="app_name">DAKBLMP MADRASAH</div>
+          <div class="sub" data-i18n="app_tagline">Smart Management App</div>
+        </div>
+      </div>
+      <nav class="nav-group">
+        ${visibleItems.map(i => `
+          <a class="nav-link ${i.key === activeKey ? 'active' : ''}" href="${i.href}">
+            <span class="icon">${i.icon}</span>
+            <span data-i18n="${i.label}">${i.label}</span>
+          </a>
+        `).join('')}
+      </nav>
+      <nav class="nav-group" style="margin-top:auto;">
+        <button class="nav-link" id="shell-logout-desktop">
+          <span class="icon">&#8630;</span>
+          <span data-i18n="nav_logout">লগ আউট</span>
+        </button>
+      </nav>
+    </aside>
+  `;
+
+  // Bottom nav (mobile) — first 4 + more collapses into settings/menu
+  const mobileItems = visibleItems.slice(0, 5);
+  const bottomNavHtml = `
+    <nav class="bottom-nav">
+      ${mobileItems.map(i => `
+        <button onclick="window.location.href='${i.href}'" class="${i.key === activeKey ? 'active' : ''}">
+          <span class="icon">${i.icon}</span>
+          <span data-i18n="${i.label}">${i.label}</span>
+        </button>
+      `).join('')}
+    </nav>
+  `;
+
+  const topbarHtml = `
+    <header class="topbar">
+      <div class="topbar-title">
+        <span data-i18n="${NAV_ITEMS.find(i => i.key === activeKey)?.label || 'nav_dashboard'}"></span>
+      </div>
+      <div class="row" style="gap: 12px;">
+        <a href="search.html" title="Search" style="color: var(--color-ink-soft); font-size: 17px; display:flex; align-items:center;">&#128269;</a>
+        <div class="lang-switch">
+          <button data-lang-btn="bn">বাং</button>
+          <button data-lang-btn="en">EN</button>
+        </div>
+        <div class="avatar" title="${profile.full_name}">${initials(profile.full_name)}</div>
+      </div>
+    </header>
+  `;
+
+  document.getElementById('shell-sidebar-slot').innerHTML = sidebarHtml;
+  document.getElementById('shell-topbar-slot').innerHTML = topbarHtml;
+  document.getElementById('shell-bottomnav-slot').innerHTML = bottomNavHtml;
+
+  document.getElementById('shell-logout-desktop').addEventListener('click', signOut);
+
+  applyI18n();
+  return profile;
+}
