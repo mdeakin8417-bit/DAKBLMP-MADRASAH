@@ -41,6 +41,7 @@ function renderPendingApprovalScreen(profile) {
           Please contact the madrasah office — once a founder or admin approves your account, you'll get full access.
         </p>
         <button class="btn btn-ghost btn-block" id="pending-logout" style="margin-top: var(--space-4);">লগ আউট / Log out</button>
+        <a href="profile.html" class="btn btn-primary btn-block" style="margin-top: var(--space-3); text-decoration:none;">নাম/পাসওয়ার্ড পরিবর্তন / Edit name or password</a>
       </div>
     </div>
   `;
@@ -107,6 +108,7 @@ async function renderShell(activeKey) {
       </div>
       <div class="row" style="gap: 12px;">
         <a href="search.html" title="Search" style="color: var(--color-ink-soft); font-size: 17px; display:flex; align-items:center;">&#128269;</a>
+        <a href="profile.html" title="My Profile" style="color: var(--color-ink-soft); font-size: 17px; display:flex; align-items:center;">&#128100;</a>
         <div class="lang-switch">
           <button data-lang-btn="bn">বাং</button>
           <button data-lang-btn="en">EN</button>
