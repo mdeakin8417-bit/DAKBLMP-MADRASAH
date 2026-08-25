@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>My Children — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.child-card { border:1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); margin-bottom: var(--space-5); overflow:hidden; }
+.child-head { background: linear-gradient(135deg, var(--color-green-900), var(--color-green-700)); color:#fff; padding: var(--space-5); display:flex; align-items:center; gap: var(--space-4); }
+.child-head .avatar-xl { width:56px; height:56px; border-radius:14px; background: rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:20px; }
+.child-body { padding: var(--space-5); }
+.mini-stat-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+.mini-stat { border:1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-3); text-align:center; }
+.mini-stat .n { font-family: var(--font-display); font-size:20px; color: var(--color-green-900); }
+.mini-stat .l { font-size:11px; color: var(--color-ink-soft); margin-top:2px; }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2>আমার সন্তান / My Children</h2>
+      </div>
+
+      <div id="children-wrap"><div class="skeleton" style="height:220px;"></div></div>
+      <div id="children-empty" class="empty-state" hidden>
+        <div class="glyph">&#128118;</div>
+        <h3>কোনো সন্তান যুক্ত নেই / No linked children yet</h3>
+        <p>অনুগ্রহ করে মাদ্রাসা অফিসের সাথে যোগাযোগ করুন। / Please contact the madrasah office to get linked.</p>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+async function loadChildAttendancePct(studentId) {
+  const { data } = await supabaseClient.from('attendance').select('status_id, attendance_statuses(name)').eq('student_id', studentId);
+  if (!data || !data.length) return null;
+  const present = data.filter(r => r.attendance_statuses?.name === 'Present').length;
+  return Math.round((present / data.length) * 100);
+}
+
+async function loadChildFeesDue(studentId) {
+  const { data } = await supabaseClient.from('payments').select('id').eq('student_id', studentId).eq('status', 'due');
+  return (data || []).length;
+}
+
+async function loadChildLatestResult(studentId) {
+  const { data } = await supabaseClient
+    .from('results')
+    .select('marks_obtained, exam_subjects(full_marks, exams(name))')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (!data || !data.length) return null;
+  const r = data[0];
+  return { examName: r.exam_subjects?.exams?.name, pct: Math.round((Number(r.marks_obtained) / Number(r.exam_subjects?.full_marks)) * 100) };
+}
+
+async function loadChildCurrentClass(studentId) {
+  const { data } = await supabaseClient
+    .from('academic_history')
+    .select('classes(name), sections(name), academic_sessions(status)')
+    .eq('student_id', studentId);
+  const current = (data || []).find(r => r.academic_sessions?.status === 'active') || (data || [])[0];
+  return current ? `${current.classes?.name || '—'}${current.sections?.name ? ' · ' + current.sections.name : ''}` : '—';
+}
+
+async function renderChild(student) {
+  const [attPct, dueCount, latestResult, className] = await Promise.all([
+    loadChildAttendancePct(student.id),
+    loadChildFeesDue(student.id),
+    loadChildLatestResult(student.id),
+    loadChildCurrentClass(student.id),
+  ]);
+
+  return `
+    <div class="child-card">
+      <div class="child-head">
+        <div class="avatar-xl">${initials(student.full_name)}</div>
+        <div>
+          <div style="font-size:17px; font-weight:700;">${student.full_name}</div>
+          <div style="font-size:12.5px; opacity:0.85; font-family: var(--font-mono);">${student.permanent_student_id}</div>
+          <div style="font-size:12.5px; opacity:0.9; margin-top:2px;">${className}</div>
+        </div>
+      </div>
+      <div class="child-body">
+        <div class="mini-stat-grid">
+          <div class="mini-stat">
+            <div class="n">${attPct !== null ? attPct + '%' : '—'}</div>
+            <div class="l">উপস্থিতি / Attendance</div>
+          </div>
+          <div class="mini-stat">
+            <div class="n" style="${dueCount > 0 ? 'color:var(--color-danger);' : ''}">${dueCount}</div>
+            <div class="l">বকেয়া ফি / Fees due</div>
+          </div>
+          <div class="mini-stat">
+            <div class="n">${latestResult ? latestResult.pct + '%' : '—'}</div>
+            <div class="l">${latestResult ? latestResult.examName : 'সাম্প্রতিক ফলাফল'}</div>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn btn-ghost" href="exams.html">মার্কশিট দেখুন / View marksheet</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+(async () => {
+  const profile = await renderShell('my-children');
+  if (!profile) return;
+  if (profile.role !== 'guardian') {
+    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="glyph">&#128274;</div><h3>Access restricted</h3><p>এই পাতা শুধু অভিভাবকদের জন্য।</p></div>';
+    return;
+  }
+
+  const { data: links, error } = await supabaseClient
+    .from('student_guardians')
+    .select('student_id, relationship, students(id, full_name, permanent_student_id, status)')
+    .eq('guardian_profile_id', profile.id);
+
+  const wrap = document.getElementById('children-wrap');
+  if (error) { wrap.innerHTML = `<p class="hint">${error.message}</p>`; return; }
+
+  const children = (links || []).map(l => l.students).filter(s => s && s.status === 'active');
+  if (!children.length) {
+    wrap.innerHTML = '';
+    document.getElementById('children-empty').removeAttribute('hidden');
+    return;
+  }
+
+  const cardsHtml = await Promise.all(children.map(renderChild));
+  wrap.innerHTML = cardsHtml.join('');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Teachers — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2 data-i18n="nav_teachers">শিক্ষকবৃন্দ</h2>
+        <div class="row">
+          <div class="search-bar">
+            <input type="text" id="search-input" placeholder="নাম বা কোড দিয়ে খুঁজুন... / Search name or code">
+          </div>
+          <button class="btn btn-primary" id="btn-new-teacher">
+            <span>+</span> <span>নতুন শিক্ষক / New teacher</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>কোড / Code</th>
+              <th data-i18n="name">নাম</th>
+              <th>পদবি / Designation</th>
+              <th>বিভাগ / Department</th>
+              <th data-i18n="status">অবস্থা</th>
+              <th>নিয়োগ / Assignments</th>
+            </tr>
+          </thead>
+          <tbody id="teachers-tbody">
+            <tr><td colspan="6"><div class="skeleton" style="height:18px;"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="teachers-empty" class="empty-state" hidden>
+        <div class="glyph">&#127891;</div>
+        <h3>এখনও কোনো শিক্ষক নেই / No teachers yet</h3>
+        <p>শুরু করতে প্রথম শিক্ষক যোগ করুন। / Add your first teacher to get started.</p>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<!-- New / Edit teacher modal -->
+<div class="modal-backdrop" id="modal-teacher" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="teacher-modal-title">নতুন শিক্ষক / New teacher</h3>
+      <button class="modal-close" onclick="closeModal('modal-teacher')">&times;</button>
+    </div>
+    <form id="form-teacher" class="stack">
+      <input type="hidden" id="t-id">
+      <div class="field">
+        <label data-i18n="full_name">পূর্ণ নাম</label>
+        <input type="text" id="t-name" required>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>শিক্ষক কোড / Teacher code</label>
+          <input type="text" id="t-code" placeholder="e.g. TCH-001">
+        </div>
+        <div class="field">
+          <label>যোগদানের তারিখ / Joining date</label>
+          <input type="date" id="t-joining">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>পদবি / Designation</label>
+          <input type="text" id="t-designation" placeholder="e.g. Senior Teacher">
+        </div>
+        <div class="field">
+          <label>বিভাগ / Department</label>
+          <select id="t-department"><option value="">—</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label data-i18n="status">অবস্থা</label>
+        <select id="t-status">
+          <option value="active">সক্রিয় / Active</option>
+          <option value="inactive">নিষ্ক্রিয় / Inactive</option>
+        </select>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top: var(--space-2);">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-teacher')" data-i18n="cancel">বাতিল</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-teacher"><span data-i18n="save">সংরক্ষণ করুন</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assignment modal -->
+<div class="modal-backdrop" id="modal-assign" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>নিয়োগ পরিচালনা / Manage assignments</h3>
+      <button class="modal-close" onclick="closeModal('modal-assign')">&times;</button>
+    </div>
+    <p class="hint" id="assign-teacher-name" style="margin-bottom: var(--space-4);"></p>
+
+    <form id="form-assign" class="stack" style="border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-4); margin-bottom: var(--space-4);">
+      <input type="hidden" id="a-teacher-id">
+      <div class="grid-2">
+        <div class="field">
+          <label data-i18n="class_label">শ্রেণি</label>
+          <select id="a-class" required></select>
+        </div>
+        <div class="field">
+          <label data-i18n="section_label">শাখা (ঐচ্ছিক) / Section (optional)</label>
+          <select id="a-section"><option value="">—</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>বিষয় / Subject</label>
+        <select id="a-subject" required></select>
+      </div>
+      <button type="submit" class="btn btn-gold btn-block">+ নিয়োগ যোগ করুন / Add assignment</button>
+    </form>
+
+    <div id="assign-list" class="stack"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+let allTeachers = [];
+let departmentsCache = [];
+let classesCache = [];
+let subjectsCache = [];
+
+async function loadLookups() {
+  const [{ data: departments }, { data: classes }, { data: subjects }] = await Promise.all([
+    supabaseClient.from('departments').select('id, name').eq('is_active', true),
+    supabaseClient.from('classes').select('id, name').eq('is_active', true).order('sort_order'),
+    supabaseClient.from('subjects').select('id, name').eq('is_active', true),
+  ]);
+  departmentsCache = departments || [];
+  classesCache = classes || [];
+  subjectsCache = subjects || [];
+
+  document.getElementById('t-department').innerHTML =
+    '<option value="">—</option>' + departmentsCache.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  document.getElementById('a-class').innerHTML =
+    classesCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('') || '<option value="">— No classes —</option>';
+  document.getElementById('a-subject').innerHTML =
+    subjectsCache.map(s => `<option value="${s.id}">${s.name}</option>`).join('') || '<option value="">— No subjects —</option>';
+
+  document.getElementById('a-class').addEventListener('change', loadSectionsForAssign);
+  if (classesCache.length) await loadSectionsForAssign();
+}
+
+async function loadSectionsForAssign() {
+  const classId = document.getElementById('a-class').value;
+  const sel = document.getElementById('a-section');
+  if (!classId) { sel.innerHTML = '<option value="">—</option>'; return; }
+  const { data: sections } = await supabaseClient.from('sections').select('id, name').eq('class_id', classId).eq('is_active', true);
+  sel.innerHTML = '<option value="">—</option>' + (sections || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function deptName(id) { return (departmentsCache.find(d => d.id === id) || {}).name || '—'; }
+
+async function loadTeachers() {
+  const { data, error } = await supabaseClient
+    .from('teachers')
+    .select('id, teacher_code, full_name, designation, department_id, status, teacher_assignments(id, class_id, section_id, subject_id, classes(name), sections(name), subjects(name))')
+    .order('created_at', { ascending: false });
+  if (error) { showToast(error.message, 'error'); return; }
+  allTeachers = data || [];
+  renderTeachers(allTeachers);
+}
+
+function renderTeachers(list) {
+  const tbody = document.getElementById('teachers-tbody');
+  const emptyState = document.getElementById('teachers-empty');
+  if (!list.length) { tbody.innerHTML = ''; emptyState.removeAttribute('hidden'); return; }
+  emptyState.setAttribute('hidden', '');
+  tbody.innerHTML = list.map(tch => `
+    <tr>
+      <td><span class="id-badge" style="padding:4px 10px 4px 4px;"><span class="id-photo">${initials(tch.full_name)}</span><span class="id-code">${tch.teacher_code || '—'}</span></span></td>
+      <td>${tch.full_name}</td>
+      <td>${tch.designation || '—'}</td>
+      <td>${deptName(tch.department_id)}</td>
+      <td><span class="pill pill-${tch.status === 'active' ? 'active' : 'inactive'}">${tch.status === 'active' ? 'Active' : 'Inactive'}</span></td>
+      <td>
+        <button class="btn btn-ghost" style="padding:6px 12px; font-size:12.5px;" onclick="openAssignModal('${tch.id}', '${tch.full_name.replace(/'/g,"\\'")}')">
+          ${tch.teacher_assignments?.length || 0} assignment(s)
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('search-input').addEventListener('input', (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) { renderTeachers(allTeachers); return; }
+  renderTeachers(allTeachers.filter(t => t.full_name.toLowerCase().includes(q) || (t.teacher_code || '').toLowerCase().includes(q)));
+});
+
+document.getElementById('btn-new-teacher').addEventListener('click', () => {
+  document.getElementById('form-teacher').reset();
+  document.getElementById('t-id').value = '';
+  document.getElementById('teacher-modal-title').textContent = 'নতুন শিক্ষক / New teacher';
+  openModal('modal-teacher');
+});
+
+document.getElementById('form-teacher').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-teacher');
+  setBtnLoading(btn, true);
+  try {
+    const id = document.getElementById('t-id').value;
+    const payload = {
+      full_name: document.getElementById('t-name').value.trim(),
+      teacher_code: document.getElementById('t-code').value.trim() || null,
+      joining_date: document.getElementById('t-joining').value || null,
+      designation: document.getElementById('t-designation').value.trim() || null,
+      department_id: document.getElementById('t-department').value || null,
+      status: document.getElementById('t-status').value,
+    };
+    let error;
+    if (id) {
+      ({ error } = await supabaseClient.from('teachers').update(payload).eq('id', id));
+    } else {
+      ({ error } = await supabaseClient.from('teachers').insert(payload));
+    }
+    if (error) throw error;
+    showToast(id ? 'হালনাগাদ হয়েছে / Updated' : 'যোগ করা হয়েছে / Added', 'success');
+    closeModal('modal-teacher');
+    await loadTeachers();
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+function openAssignModal(teacherId, teacherName) {
+  document.getElementById('a-teacher-id').value = teacherId;
+  document.getElementById('assign-teacher-name').textContent = teacherName;
+  renderAssignmentList(teacherId);
+  openModal('modal-assign');
+}
+
+function renderAssignmentList(teacherId) {
+  const teacher = allTeachers.find(t => t.id === teacherId);
+  const list = document.getElementById('assign-list');
+  const assignments = teacher?.teacher_assignments || [];
+  if (!assignments.length) {
+    list.innerHTML = '<p class="hint" style="text-align:center; padding: var(--space-3) 0;">কোনো নিয়োগ নেই / No assignments yet</p>';
+    return;
+  }
+  list.innerHTML = assignments.map(a => `
+    <div class="row" style="justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--color-border);">
+      <span style="font-size: 13.5px;">
+        <strong>${a.classes?.name || '—'}</strong>${a.sections?.name ? ' · ' + a.sections.name : ''} — ${a.subjects?.name || '—'}
+      </span>
+      <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="removeAssignment('${a.id}', '${teacherId}')">✕</button>
+    </div>
+  `).join('');
+}
+
+async function removeAssignment(assignmentId, teacherId) {
+  const { error } = await supabaseClient.from('teacher_assignments').delete().eq('id', assignmentId);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadTeachers();
+  renderAssignmentList(teacherId);
+}
+
+document.getElementById('form-assign').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const teacherId = document.getElementById('a-teacher-id').value;
+  const classId = document.getElementById('a-class').value;
+  const sectionId = document.getElementById('a-section').value || null;
+  const subjectId = document.getElementById('a-subject').value;
+  if (!classId || !subjectId) return;
+  try {
+    const { error } = await supabaseClient.from('teacher_assignments').insert({
+      teacher_id: teacherId, class_id: classId, section_id: sectionId, subject_id: subjectId
+    });
+    if (error) throw error;
+    showToast('নিয়োগ যোগ করা হয়েছে / Assignment added', 'success');
+    await loadTeachers();
+    renderAssignmentList(teacherId);
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  }
+});
+
+(async () => {
+  const profile = await renderShell('teachers');
+  if (!profile) return;
+  if (!['founder', 'admin'].includes(profile.role)) {
+    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="glyph">&#128274;</div><h3>Access restricted</h3><p>এই পাতা শুধু admin/founder দেখতে পারবেন।</p></div>';
+    return;
+  }
+  await loadLookups();
+  await loadTeachers();
+})();
+</script>
+</body>
+</html>

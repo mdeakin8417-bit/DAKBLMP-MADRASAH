@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Events — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.tabs { display:flex; gap:4px; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x:auto; }
+.tab-btn { padding: 10px 16px; border:none; background:none; font-size:13.5px; font-weight:600; color: var(--color-ink-soft); cursor:pointer; border-bottom: 2.5px solid transparent; white-space:nowrap; }
+.tab-btn.active { color: var(--color-green-800); border-bottom-color: var(--color-green-800); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+.inline-form { display:flex; gap: var(--space-2); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-5); }
+.inline-form .field { margin-bottom: 0; min-width: 140px; }
+.event-row { display:flex; gap: var(--space-4); align-items:flex-start; padding: var(--space-4); border:1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: var(--space-3); background: var(--color-surface); }
+.event-row.past { opacity: 0.6; }
+.event-date-box { flex-shrink:0; width:56px; text-align:center; background: var(--color-green-900); color:#fff; border-radius: var(--radius-sm); padding: 8px 4px; }
+.event-date-box .day { font-family: var(--font-display); font-size:19px; line-height:1; }
+.event-date-box .mon { font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color: var(--color-gold-400); margin-top:2px; }
+.event-title { font-size: 14.5px; font-weight:700; color: var(--color-green-900); }
+.event-meta { font-size: 12px; color: var(--color-ink-soft); margin-top:3px; }
+.event-desc { font-size: 13px; color: var(--color-ink-soft); margin-top:6px; }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2>ইভেন্ট / Events</h2>
+        <button class="btn btn-primary" id="btn-new-event" hidden>+ নতুন ইভেন্ট / New event</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="upcoming">আসন্ন / Upcoming</button>
+        <button class="tab-btn" data-tab="past">অতীত / Past</button>
+        <button class="tab-btn" data-tab="types" id="tab-event-types-btn" hidden>ধরন / Types</button>
+      </div>
+
+      <div class="tab-panel active" id="panel-upcoming">
+        <div id="upcoming-wrap"><div class="skeleton" style="height:70px;"></div></div>
+        <div id="upcoming-empty" class="empty-state" hidden>
+          <div class="glyph">&#128197;</div>
+          <h3>কোনো আসন্ন ইভেন্ট নেই / No upcoming events</h3>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panel-past">
+        <div id="past-wrap"><div class="skeleton" style="height:70px;"></div></div>
+        <div id="past-empty" class="empty-state" hidden>
+          <div class="glyph">&#128197;</div>
+          <h3>কোনো অতীত ইভেন্ট নেই / No past events</h3>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panel-types">
+        <form id="form-event-type" class="inline-form">
+          <div class="field"><input type="text" id="et-name" placeholder="e.g. Islamic" required style="width:220px;"></div>
+          <button type="submit" class="btn btn-primary">+ যোগ করুন / Add</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th data-i18n="status">Status</th><th></th></tr></thead>
+            <tbody id="event-types-tbody"><tr><td colspan="3"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<!-- New event modal -->
+<div class="modal-backdrop" id="modal-event" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>নতুন ইভেন্ট / New event</h3>
+      <button class="modal-close" onclick="closeModal('modal-event')">&times;</button>
+    </div>
+    <form id="form-event" class="stack">
+      <div class="field">
+        <label>শিরোনাম / Title</label>
+        <input type="text" id="ev-title" required>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>ধরন / Type</label>
+          <select id="ev-type"><option value="">—</option></select>
+        </div>
+        <div class="field">
+          <label>স্থান / Location</label>
+          <input type="text" id="ev-location">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>তারিখ / Date</label>
+          <input type="date" id="ev-date" required>
+        </div>
+        <div class="field">
+          <label>সময় / Time</label>
+          <input type="time" id="ev-time">
+        </div>
+      </div>
+      <div class="field">
+        <label>বিবরণ / Description</label>
+        <textarea id="ev-desc" rows="3"></textarea>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top: var(--space-2);">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-event')" data-i18n="cancel">বাতিল</button>
+        <button type="submit" class="btn btn-primary" id="btn-save-event">সংরক্ষণ করুন / Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+let eventTypesCache = [];
+let canManage = false;
+const MONTHS_EN = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+async function loadEventTypes() {
+  const { data, error } = await supabaseClient.from('event_types').select('id, name, is_active').order('name');
+  if (error) { showToast(error.message, 'error'); return; }
+  eventTypesCache = data || [];
+  document.getElementById('ev-type').innerHTML = '<option value="">—</option>' + eventTypesCache.filter(t => t.is_active).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  renderEventTypesTable();
+}
+
+function renderEventTypesTable() {
+  const tbody = document.getElementById('event-types-tbody');
+  if (!eventTypesCache.length) { tbody.innerHTML = '<tr><td colspan="3" class="hint">কোনো ধরন নেই / None yet</td></tr>'; return; }
+  tbody.innerHTML = eventTypesCache.map(t => `
+    <tr>
+      <td>${t.name}</td>
+      <td><span class="pill pill-${t.is_active ? 'active' : 'inactive'}">${t.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td><button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="toggleEventType('${t.id}', ${t.is_active})">${t.is_active ? 'Deactivate' : 'Activate'}</button></td>
+    </tr>
+  `).join('');
+}
+
+async function toggleEventType(id, isActive) {
+  const { error } = await supabaseClient.from('event_types').update({ is_active: !isActive }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadEventTypes();
+}
+
+document.getElementById('form-event-type').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('et-name').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('event_types').insert({ name });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('et-name').value = '';
+  showToast('যোগ করা হয়েছে / Added', 'success');
+  await loadEventTypes();
+});
+
+function eventCardHtml(ev, isPast) {
+  const d = new Date(ev.event_date);
+  return `
+    <div class="event-row ${isPast ? 'past' : ''}">
+      <div class="event-date-box">
+        <div class="day">${d.getDate()}</div>
+        <div class="mon">${MONTHS_EN[d.getMonth()]}</div>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div class="event-title">${ev.title}</div>
+            <div class="event-meta">
+              ${ev.event_types?.name ? ev.event_types.name + ' · ' : ''}
+              ${ev.event_time ? ev.event_time.slice(0,5) + ' · ' : ''}
+              ${ev.location || ''}
+            </div>
+          </div>
+          ${canManage ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:12px;" onclick="deleteEvent('${ev.id}')">Delete</button>` : ''}
+        </div>
+        ${ev.description ? `<div class="event-desc">${ev.description}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function loadEvents() {
+  const today = new Date().toISOString().slice(0, 10);
+  const [{ data: upcoming, error: e1 }, { data: past, error: e2 }] = await Promise.all([
+    supabaseClient.from('events').select('id, title, description, event_date, event_time, location, event_types(name)').gte('event_date', today).order('event_date', { ascending: true }),
+    supabaseClient.from('events').select('id, title, description, event_date, event_time, location, event_types(name)').lt('event_date', today).order('event_date', { ascending: false }).limit(20),
+  ]);
+
+  const upcomingWrap = document.getElementById('upcoming-wrap');
+  const upcomingEmpty = document.getElementById('upcoming-empty');
+  if (e1) { upcomingWrap.innerHTML = `<p class="hint">${e1.message}</p>`; }
+  else if (!upcoming || !upcoming.length) { upcomingWrap.innerHTML = ''; upcomingEmpty.removeAttribute('hidden'); }
+  else { upcomingEmpty.setAttribute('hidden',''); upcomingWrap.innerHTML = upcoming.map(ev => eventCardHtml(ev, false)).join(''); }
+
+  const pastWrap = document.getElementById('past-wrap');
+  const pastEmpty = document.getElementById('past-empty');
+  if (e2) { pastWrap.innerHTML = `<p class="hint">${e2.message}</p>`; }
+  else if (!past || !past.length) { pastWrap.innerHTML = ''; pastEmpty.removeAttribute('hidden'); }
+  else { pastEmpty.setAttribute('hidden',''); pastWrap.innerHTML = past.map(ev => eventCardHtml(ev, true)).join(''); }
+}
+
+async function deleteEvent(id) {
+  const { error } = await supabaseClient.from('events').delete().eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('মুছে ফেলা হয়েছে / Deleted', 'success');
+  await loadEvents();
+}
+
+document.getElementById('btn-new-event').addEventListener('click', () => {
+  document.getElementById('form-event').reset();
+  openModal('modal-event');
+});
+
+document.getElementById('form-event').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-event');
+  setBtnLoading(btn, true);
+  try {
+    const profile = await getMyProfile();
+    const payload = {
+      title: document.getElementById('ev-title').value.trim(),
+      event_type_id: document.getElementById('ev-type').value || null,
+      location: document.getElementById('ev-location').value.trim() || null,
+      event_date: document.getElementById('ev-date').value,
+      event_time: document.getElementById('ev-time').value || null,
+      description: document.getElementById('ev-desc').value.trim() || null,
+      created_by: profile?.id || null,
+    };
+    const { error } = await supabaseClient.from('events').insert(payload);
+    if (error) throw error;
+    showToast('ইভেন্ট যোগ করা হয়েছে / Event added', 'success');
+    closeModal('modal-event');
+    await loadEvents();
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+(async () => {
+  const profile = await renderShell('events');
+  if (!profile) return;
+  canManage = ['founder', 'admin'].includes(profile.role);
+  if (canManage) {
+    document.getElementById('btn-new-event').removeAttribute('hidden');
+    document.getElementById('tab-event-types-btn').removeAttribute('hidden');
+  }
+  await loadEventTypes();
+  await loadEvents();
+})();
+</script>
+</body>
+</html>

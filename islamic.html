@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Islamic Features — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.tabs { display:flex; gap:4px; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x:auto; }
+.tab-btn { padding: 10px 16px; border:none; background:none; font-size:13.5px; font-weight:600; color: var(--color-ink-soft); cursor:pointer; border-bottom: 2.5px solid transparent; white-space:nowrap; }
+.tab-btn.active { color: var(--color-green-800); border-bottom-color: var(--color-green-800); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+.inline-form { display:flex; gap: var(--space-2); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-5); }
+.inline-form .field { margin-bottom: 0; min-width: 140px; }
+
+.verse-hero {
+  background: linear-gradient(155deg, var(--color-green-900), var(--color-green-700));
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+  margin-bottom: var(--space-5);
+  position: relative;
+  overflow: hidden;
+}
+.verse-hero::before {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: radial-gradient(circle at 10px 10px, rgba(201,162,39,0.18) 1.5px, transparent 1.6px);
+  background-size: 20px 20px;
+}
+.verse-arabic {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.9;
+  position: relative;
+  direction: rtl;
+}
+.verse-translation {
+  font-size: 14.5px;
+  margin-top: var(--space-4);
+  opacity: 0.92;
+  position: relative;
+  max-width: 480px;
+  margin-left: auto; margin-right: auto;
+}
+.verse-ref {
+  font-size: 12px;
+  color: var(--color-gold-400);
+  margin-top: var(--space-3);
+  position: relative;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.prayer-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: var(--space-3); }
+.prayer-tile { border:1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4) var(--space-2); text-align:center; background: var(--color-surface); }
+.prayer-tile .pname { font-size: 11.5px; text-transform: uppercase; letter-spacing:0.05em; color: var(--color-gold-600); font-weight:700; }
+.prayer-tile .ptime { font-family: var(--font-display); font-size: 19px; color: var(--color-green-900); margin-top: 4px; }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2>ইসলামিক ফিচার / Islamic Features</h2>
+      </div>
+
+      <div class="verse-hero">
+        <div class="verse-arabic" id="today-arabic">﴿ ﴾</div>
+        <div class="verse-translation" id="today-translation">—</div>
+        <div class="verse-ref" id="today-ref">—</div>
+      </div>
+
+      <h3 style="font-size:15px; margin-bottom: var(--space-3);">আজকের নামাজের সময় / Today's Prayer Times</h3>
+      <div class="prayer-grid" id="prayer-grid" style="margin-bottom: var(--space-6);">
+        <div class="skeleton" style="height:80px;"></div>
+      </div>
+
+      <div class="tabs" id="admin-tabs" hidden>
+        <button class="tab-btn active" data-tab="verses">আয়াত পরিচালনা / Manage Verses</button>
+        <button class="tab-btn" data-tab="prayers">নামাজের সময় পরিচালনা / Manage Prayer Times</button>
+      </div>
+
+      <div class="tab-panel active" id="panel-verses" hidden>
+        <form id="form-verse" class="stack card card-pad" style="margin-bottom: var(--space-5);">
+          <div class="field">
+            <label>আরবি টেক্সট / Arabic text</label>
+            <textarea id="v-arabic" rows="2" required dir="rtl" style="font-family: var(--font-display); font-size:18px;"></textarea>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>অনুবাদ (বাংলা) / Translation (Bangla)</label>
+              <textarea id="v-bn" rows="2"></textarea>
+            </div>
+            <div class="field">
+              <label>Translation (English)</label>
+              <textarea id="v-en" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>রেফারেন্স / Reference</label>
+              <input type="text" id="v-ref" placeholder="e.g. Surah Al-Baqarah 2:153">
+            </div>
+            <div class="field">
+              <label>প্রদর্শনের তারিখ (ঐচ্ছিক) / Display date (optional)</label>
+              <input type="date" id="v-date">
+              <span class="hint">খালি রাখলে সাধারণ verse pool-এ যোগ হবে / Leave blank to add to the general rotation</span>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">+ যোগ করুন / Add verse</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Reference</th><th>Translation</th><th>Display date</th><th></th></tr></thead>
+            <tbody id="verses-tbody"><tr><td colspan="4"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panel-prayers" hidden>
+        <div class="card card-pad" style="margin-bottom: var(--space-5);">
+          <h4 style="font-size:13.5px; margin-bottom: var(--space-3);">📍 মাদ্রাসার অবস্থান (একবার সেট করুন) / Madrasah location (set once)</h4>
+          <div class="grid-2">
+            <div class="field"><label>শহর / City</label><input type="text" id="loc-city" placeholder="e.g. Dhaka"></div>
+            <div class="field"><label>দেশ / Country</label><input type="text" id="loc-country" placeholder="e.g. Bangladesh"></div>
+          </div>
+          <div class="row">
+            <button type="button" class="btn btn-ghost" id="btn-save-location">অবস্থান সংরক্ষণ করুন / Save location</button>
+            <button type="button" class="btn btn-gold" id="btn-autofetch-month">🔄 এই মাসের সম্পূর্ণ সময়সূচি আনুন / Auto-fetch this month</button>
+          </div>
+          <p class="hint" id="autofetch-status" style="margin-top: var(--space-2);"></p>
+        </div>
+
+        <form id="form-prayer" class="stack card card-pad" style="margin-bottom: var(--space-5);">
+          <p class="hint" style="margin-bottom: var(--space-2);">ম্যানুয়ালি একটি নির্দিষ্ট দিন সংশোধন করতে চাইলে / To manually correct a single day:</p>
+          <div class="field">
+            <label>তারিখ / Date</label>
+            <input type="date" id="p-date" required>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>ফজর / Fajr</label><input type="time" id="p-fajr"></div>
+            <div class="field"><label>যোহর / Dhuhr</label><input type="time" id="p-dhuhr"></div>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>আসর / Asr</label><input type="time" id="p-asr"></div>
+            <div class="field"><label>মাগরিব / Maghrib</label><input type="time" id="p-maghrib"></div>
+          </div>
+          <div class="field" style="max-width:220px;"><label>এশা / Isha</label><input type="time" id="p-isha"></div>
+          <button type="submit" class="btn btn-primary">সংরক্ষণ করুন / Save schedule</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Fajr</th><th>Dhuhr</th><th>Asr</th><th>Maghrib</th><th>Isha</th></tr></thead>
+            <tbody id="prayers-tbody"><tr><td colspan="6"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+let canManage = false;
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+// ---- Today's verse (dated match first, else random from pool) ----
+async function loadTodayVerse() {
+  const today = todayStr();
+  let { data: dated } = await supabaseClient.from('daily_verses').select('*').eq('display_date', today).limit(1);
+  let verse = (dated && dated[0]) || null;
+  if (!verse) {
+    const { data: pool } = await supabaseClient.from('daily_verses').select('*').is('display_date', null);
+    if (pool && pool.length) {
+      // Deterministic pick based on day-of-year so it's stable for the whole day
+      const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+      verse = pool[dayOfYear % pool.length];
+    }
+  }
+  const lang = getLang();
+  if (verse) {
+    document.getElementById('today-arabic').textContent = verse.arabic_text;
+    document.getElementById('today-translation').textContent = lang === 'bn' ? (verse.translation_bn || verse.translation_en || '—') : (verse.translation_en || verse.translation_bn || '—');
+    document.getElementById('today-ref').textContent = verse.reference || '';
+  } else {
+    document.getElementById('today-arabic').textContent = '﴿ ﴾';
+    document.getElementById('today-translation').textContent = 'এখনও কোনো আয়াত যোগ করা হয়নি / No verses added yet';
+    document.getElementById('today-ref').textContent = '';
+  }
+}
+
+// ---- Today's prayer times ----
+async function loadTodayPrayer() {
+  const { data } = await supabaseClient.from('prayer_schedule').select('*').eq('schedule_date', todayStr()).maybeSingle();
+  const grid = document.getElementById('prayer-grid');
+  const prayers = [
+    { key: 'fajr', label: 'ফজর / Fajr' },
+    { key: 'dhuhr', label: 'যোহর / Dhuhr' },
+    { key: 'asr', label: 'আসর / Asr' },
+    { key: 'maghrib', label: 'মাগরিব / Maghrib' },
+    { key: 'isha', label: 'এশা / Isha' },
+  ];
+  if (!data) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><div class="glyph">&#128337;</div><p>আজকের সময়সূচি এখনও সেট করা হয়নি / Today's schedule not set yet</p></div>`;
+    return;
+  }
+  grid.innerHTML = prayers.map(p => `
+    <div class="prayer-tile">
+      <div class="pname">${p.label}</div>
+      <div class="ptime">${data[p.key] ? data[p.key].slice(0, 5) : '—'}</div>
+    </div>
+  `).join('');
+}
+
+// ---- Manage verses (admin) ----
+async function loadVersesTable() {
+  const { data, error } = await supabaseClient.from('daily_verses').select('*').order('created_at', { ascending: false }).limit(30);
+  const tbody = document.getElementById('verses-tbody');
+  if (error) { tbody.innerHTML = `<tr><td colspan="4">${error.message}</td></tr>`; return; }
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="4" class="hint">এখনও কোনো আয়াত নেই / No verses yet</td></tr>'; return; }
+  tbody.innerHTML = data.map(v => `
+    <tr>
+      <td>${v.reference || '—'}</td>
+      <td style="max-width:280px; white-space:normal;">${v.translation_bn || v.translation_en || '—'}</td>
+      <td>${v.display_date ? formatDate(v.display_date, getLang()) : 'Rotation'}</td>
+      <td><button class="btn btn-danger" style="padding:4px 9px;font-size:11.5px;" onclick="deleteVerse('${v.id}')">Delete</button></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('form-verse').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    arabic_text: document.getElementById('v-arabic').value.trim(),
+    translation_bn: document.getElementById('v-bn').value.trim() || null,
+    translation_en: document.getElementById('v-en').value.trim() || null,
+    reference: document.getElementById('v-ref').value.trim() || null,
+    display_date: document.getElementById('v-date').value || null,
+  };
+  if (!payload.arabic_text) { showToast('আরবি টেক্সট আবশ্যক / Arabic text required', 'error'); return; }
+  const { error } = await supabaseClient.from('daily_verses').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('form-verse').reset();
+  showToast('যোগ করা হয়েছে / Added', 'success');
+  await loadVersesTable();
+  await loadTodayVerse();
+});
+
+async function deleteVerse(id) {
+  const { error } = await supabaseClient.from('daily_verses').delete().eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadVersesTable();
+  await loadTodayVerse();
+}
+
+// ---- Manage prayer schedule (admin) ----
+async function loadPrayersTable() {
+  const { data, error } = await supabaseClient.from('prayer_schedule').select('*').order('schedule_date', { ascending: false }).limit(30);
+  const tbody = document.getElementById('prayers-tbody');
+  if (error) { tbody.innerHTML = `<tr><td colspan="6">${error.message}</td></tr>`; return; }
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="6" class="hint">এখনও কোনো সময়সূচি নেই / No schedule yet</td></tr>'; return; }
+  tbody.innerHTML = data.map(p => `
+    <tr>
+      <td>${formatDate(p.schedule_date, getLang())}</td>
+      <td>${p.fajr ? p.fajr.slice(0,5) : '—'}</td>
+      <td>${p.dhuhr ? p.dhuhr.slice(0,5) : '—'}</td>
+      <td>${p.asr ? p.asr.slice(0,5) : '—'}</td>
+      <td>${p.maghrib ? p.maghrib.slice(0,5) : '—'}</td>
+      <td>${p.isha ? p.isha.slice(0,5) : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('form-prayer').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    schedule_date: document.getElementById('p-date').value,
+    fajr: document.getElementById('p-fajr').value || null,
+    dhuhr: document.getElementById('p-dhuhr').value || null,
+    asr: document.getElementById('p-asr').value || null,
+    maghrib: document.getElementById('p-maghrib').value || null,
+    isha: document.getElementById('p-isha').value || null,
+  };
+  if (!payload.schedule_date) { showToast('তারিখ দিন / Provide a date', 'error'); return; }
+  const { error } = await supabaseClient.from('prayer_schedule').upsert(payload, { onConflict: 'schedule_date' });
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('সংরক্ষণ করা হয়েছে / Saved', 'success');
+  await loadPrayersTable();
+  await loadTodayPrayer();
+});
+
+// ---- Location settings (for auto-fetch) ----
+async function loadLocationSettings() {
+  const { data } = await supabaseClient.from('settings').select('value').eq('key', 'madrasah_location').maybeSingle();
+  if (data?.value) {
+    document.getElementById('loc-city').value = data.value.city || '';
+    document.getElementById('loc-country').value = data.value.country || '';
+  }
+}
+
+document.getElementById('btn-save-location').addEventListener('click', async () => {
+  const value = {
+    city: document.getElementById('loc-city').value.trim(),
+    country: document.getElementById('loc-country').value.trim(),
+  };
+  if (!value.city || !value.country) { showToast('শহর ও দেশ দিন / Provide city and country', 'error'); return; }
+  const { error } = await supabaseClient.from('settings').upsert({ key: 'madrasah_location', value }, { onConflict: 'key' });
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('অবস্থান সংরক্ষিত হয়েছে / Location saved', 'success');
+});
+
+// ---- Auto-fetch a full month from the Aladhan prayer times API ----
+document.getElementById('btn-autofetch-month').addEventListener('click', async () => {
+  const city = document.getElementById('loc-city').value.trim();
+  const country = document.getElementById('loc-country').value.trim();
+  const statusEl = document.getElementById('autofetch-status');
+  if (!city || !country) { showToast('প্রথমে শহর ও দেশ সংরক্ষণ করুন / Save city and country first', 'error'); return; }
+
+  const btn = document.getElementById('btn-autofetch-month');
+  setBtnLoading(btn, true);
+  statusEl.textContent = 'আনা হচ্ছে... / Fetching...';
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const url = `https://api.aladhan.com/v1/calendarByCity/${year}/${month}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=2`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Prayer times service unavailable');
+    const json = await res.json();
+    if (!json.data || !json.data.length) throw new Error('No data returned for this city/country');
+
+    const to24h = (raw) => {
+      // Aladhan returns e.g. "04:12 (+06)" — strip timezone suffix
+      const clean = raw.split(' ')[0];
+      return clean.length === 5 ? clean + ':00' : clean;
+    };
+
+    const rows = json.data.map(day => {
+      const dateStr = `${day.date.gregorian.year}-${day.date.gregorian.month.number.toString().padStart(2,'0')}-${day.date.gregorian.day.padStart(2,'0')}`;
+      return {
+        schedule_date: dateStr,
+        fajr: to24h(day.timings.Fajr),
+        dhuhr: to24h(day.timings.Dhuhr),
+        asr: to24h(day.timings.Asr),
+        maghrib: to24h(day.timings.Maghrib),
+        isha: to24h(day.timings.Isha),
+      };
+    });
+
+    const { error } = await supabaseClient.from('prayer_schedule').upsert(rows, { onConflict: 'schedule_date' });
+    if (error) throw error;
+
+    statusEl.textContent = `✅ ${rows.length} দিনের সময়সূচি সংরক্ষিত হয়েছে / ${rows.length} days saved`;
+    showToast('মাসিক সময়সূচি auto-fetch হয়েছে / Monthly schedule auto-fetched', 'success');
+    await loadPrayersTable();
+    await loadTodayPrayer();
+  } catch (err) {
+    statusEl.textContent = '';
+    showToast(err.message || 'Auto-fetch failed', 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+(async () => {
+  const profile = await renderShell('islamic');
+  if (!profile) return;
+  canManage = ['founder', 'admin'].includes(profile.role);
+
+  await loadTodayVerse();
+  await loadTodayPrayer();
+
+  if (canManage) {
+    document.getElementById('admin-tabs').removeAttribute('hidden');
+    document.getElementById('panel-verses').removeAttribute('hidden');
+    document.getElementById('p-date').value = todayStr();
+    await loadLocationSettings();
+    await loadVersesTable();
+    await loadPrayersTable();
+  }
+})();
+</script>
+</body>
+</html>

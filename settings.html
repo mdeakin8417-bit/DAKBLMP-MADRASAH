@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Settings — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.tabs { display:flex; gap:4px; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x:auto; }
+.tab-btn { padding: 10px 16px; border:none; background:none; font-size:13.5px; font-weight:600; color: var(--color-ink-soft); cursor:pointer; border-bottom: 2.5px solid transparent; white-space:nowrap; }
+.tab-btn.active { color: var(--color-green-800); border-bottom-color: var(--color-green-800); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+.inline-form { display:flex; gap: var(--space-2); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-5); }
+.inline-form .field { margin-bottom: 0; min-width: 140px; }
+.md-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--space-5); }
+.md-block h4 { font-size: 13.5px; margin-bottom: var(--space-3); color: var(--color-green-900); }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2 data-i18n="nav_settings">সেটিংস</h2>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="general">সাধারণ তথ্য / General</button>
+        <button class="tab-btn" data-tab="sessions">শিক্ষাবর্ষ / Sessions</button>
+        <button class="tab-btn" data-tab="masterdata">মাস্টার ডাটা / Master Data</button>
+      </div>
+
+      <!-- ===== GENERAL ===== -->
+      <div class="tab-panel active" id="panel-general">
+        <form id="form-general" class="stack card card-pad" style="max-width: 560px;">
+          <div class="field">
+            <label>মাদ্রাসার নাম / Madrasah name</label>
+            <input type="text" id="g-name">
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>ফোন / Phone</label><input type="text" id="g-phone"></div>
+            <div class="field"><label>ইমেইল / Email</label><input type="email" id="g-email"></div>
+          </div>
+          <div class="field">
+            <label>ঠিকানা / Address</label>
+            <textarea id="g-address" rows="2"></textarea>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>ডিফল্ট ভাষা / Default language</label>
+              <select id="g-lang"><option value="bn">বাংলা</option><option value="en">English</option></select>
+            </div>
+            <div class="field">
+              <label>মুদ্রা / Currency</label>
+              <input type="text" id="g-currency" placeholder="৳ BDT">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" id="btn-save-general">সংরক্ষণ করুন / Save</button>
+        </form>
+      </div>
+
+      <!-- ===== SESSIONS ===== -->
+      <div class="tab-panel" id="panel-sessions">
+        <form id="form-session" class="inline-form">
+          <div class="field"><label>নাম / Name</label><input type="text" id="ses-name" placeholder="e.g. 2026-27" required style="width:140px;"></div>
+          <div class="field"><label>শুরু / Start</label><input type="date" id="ses-start"></div>
+          <div class="field"><label>শেষ / End</label><input type="date" id="ses-end"></div>
+          <button type="submit" class="btn btn-primary">+ যোগ করুন / Add</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Start</th><th>End</th><th>Status</th><th></th></tr></thead>
+            <tbody id="sessions-tbody"><tr><td colspan="5"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== MASTER DATA ===== -->
+      <div class="tab-panel" id="panel-masterdata">
+        <div class="md-grid">
+          <div class="md-block">
+            <h4>বিভাগ / Departments</h4>
+            <form class="inline-form" id="form-department"><input type="text" id="dep-name" placeholder="Name" required style="flex:1;"><button class="btn btn-ghost">+</button></form>
+            <div class="table-wrap"><table><tbody id="departments-tbody"></tbody></table></div>
+          </div>
+          <div class="md-block">
+            <h4>শ্রেণি / Classes</h4>
+            <form class="inline-form" id="form-class">
+              <input type="text" id="cls-name" placeholder="Name" required style="flex:1;">
+              <select id="cls-department"><option value="">Dept —</option></select>
+              <button class="btn btn-ghost">+</button>
+            </form>
+            <div class="table-wrap"><table><tbody id="classes-tbody"></tbody></table></div>
+          </div>
+          <div class="md-block">
+            <h4>শাখা / Sections</h4>
+            <form class="inline-form" id="form-section">
+              <select id="sec-class" required style="flex:1;"></select>
+              <input type="text" id="sec-name" placeholder="Name" required style="width:90px;">
+              <button class="btn btn-ghost">+</button>
+            </form>
+            <div class="table-wrap"><table><tbody id="sections-tbody"></tbody></table></div>
+          </div>
+          <div class="md-block">
+            <h4>বিষয় / Subjects</h4>
+            <form class="inline-form" id="form-subject">
+              <input type="text" id="sub-name" placeholder="Name" required style="flex:1;">
+              <input type="text" id="sub-code" placeholder="Code" style="width:80px;">
+              <button class="btn btn-ghost">+</button>
+            </form>
+            <div class="table-wrap"><table><tbody id="subjects-tbody"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ---- General settings ----
+const GENERAL_KEY = 'madrasah_general';
+async function loadGeneral() {
+  const { data } = await supabaseClient.from('settings').select('value').eq('key', GENERAL_KEY).maybeSingle();
+  const v = data?.value || {};
+  document.getElementById('g-name').value = v.name || '';
+  document.getElementById('g-phone').value = v.phone || '';
+  document.getElementById('g-email').value = v.email || '';
+  document.getElementById('g-address').value = v.address || '';
+  document.getElementById('g-lang').value = v.default_lang || 'bn';
+  document.getElementById('g-currency').value = v.currency || '৳ BDT';
+}
+
+document.getElementById('form-general').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-general');
+  setBtnLoading(btn, true);
+  try {
+    const value = {
+      name: document.getElementById('g-name').value.trim(),
+      phone: document.getElementById('g-phone').value.trim(),
+      email: document.getElementById('g-email').value.trim(),
+      address: document.getElementById('g-address').value.trim(),
+      default_lang: document.getElementById('g-lang').value,
+      currency: document.getElementById('g-currency').value.trim(),
+    };
+    const { error } = await supabaseClient.from('settings').upsert({ key: GENERAL_KEY, value }, { onConflict: 'key' });
+    if (error) throw error;
+    showToast('সংরক্ষণ করা হয়েছে / Saved', 'success');
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+// ---- Academic sessions ----
+async function loadSessions() {
+  const { data, error } = await supabaseClient.from('academic_sessions').select('*').order('created_at', { ascending: false });
+  const tbody = document.getElementById('sessions-tbody');
+  if (error) { tbody.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`; return; }
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="5" class="hint">কোনো সেশন নেই / None yet</td></tr>'; return; }
+  tbody.innerHTML = data.map(s => `
+    <tr>
+      <td>${s.name}</td>
+      <td>${s.start_date ? formatDate(s.start_date, getLang()) : '—'}</td>
+      <td>${s.end_date ? formatDate(s.end_date, getLang()) : '—'}</td>
+      <td><span class="pill pill-${s.status === 'active' ? 'active' : 'inactive'}">${s.status}</span></td>
+      <td>
+        ${s.status !== 'active' ? `<button class="btn btn-gold" style="padding:4px 9px;font-size:11px;" onclick="setActiveSession('${s.id}')">Activate</button>` : ''}
+        ${s.status === 'active' ? `<button class="btn btn-ghost" style="padding:4px 9px;font-size:11px;" onclick="closeSession('${s.id}')">Close</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('form-session').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    name: document.getElementById('ses-name').value.trim(),
+    start_date: document.getElementById('ses-start').value || null,
+    end_date: document.getElementById('ses-end').value || null,
+  };
+  const { error } = await supabaseClient.from('academic_sessions').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('form-session').reset();
+  showToast('যোগ করা হয়েছে / Added', 'success');
+  await loadSessions();
+});
+
+async function setActiveSession(id) {
+  // Only one session should be 'active' at a time
+  await supabaseClient.from('academic_sessions').update({ status: 'upcoming' }).eq('status', 'active');
+  const { error } = await supabaseClient.from('academic_sessions').update({ status: 'active' }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('সক্রিয় করা হয়েছে / Activated', 'success');
+  await loadSessions();
+}
+
+async function closeSession(id) {
+  const { error } = await supabaseClient.from('academic_sessions').update({ status: 'closed' }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  showToast('বন্ধ করা হয়েছে / Closed', 'success');
+  await loadSessions();
+}
+
+// ---- Master data: departments ----
+async function loadDepartments() {
+  const { data } = await supabaseClient.from('departments').select('*').order('name');
+  document.getElementById('departments-tbody').innerHTML = (data || []).map(d => `
+    <tr><td>${d.name}</td><td><span class="pill pill-${d.is_active?'active':'inactive'}">${d.is_active?'On':'Off'}</span></td>
+    <td><button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRow('departments','${d.id}',${d.is_active})">${d.is_active?'Off':'On'}</button></td></tr>
+  `).join('') || '<tr><td class="hint">—</td></tr>';
+
+  const opts = (data || []).filter(d=>d.is_active).map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  document.getElementById('cls-department').innerHTML = '<option value="">Dept —</option>' + opts;
+}
+
+document.getElementById('form-department').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('dep-name').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('departments').insert({ name });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('dep-name').value = '';
+  await loadDepartments();
+});
+
+// ---- Master data: classes ----
+async function loadClasses() {
+  const { data } = await supabaseClient.from('classes').select('*, departments(name)').order('sort_order');
+  document.getElementById('classes-tbody').innerHTML = (data || []).map(c => `
+    <tr><td>${c.name} <span class="hint">${c.departments?.name ? '('+c.departments.name+')' : ''}</span></td>
+    <td><span class="pill pill-${c.is_active?'active':'inactive'}">${c.is_active?'On':'Off'}</span></td>
+    <td><button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRow('classes','${c.id}',${c.is_active})">${c.is_active?'Off':'On'}</button></td></tr>
+  `).join('') || '<tr><td class="hint">—</td></tr>';
+
+  const opts = (data || []).filter(c=>c.is_active).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  document.getElementById('sec-class').innerHTML = opts || '<option value="">— No classes —</option>';
+}
+
+document.getElementById('form-class').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('cls-name').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('classes').insert({ name, department_id: document.getElementById('cls-department').value || null });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('cls-name').value = '';
+  await loadClasses();
+});
+
+// ---- Master data: sections ----
+async function loadSections() {
+  const { data } = await supabaseClient.from('sections').select('*, classes(name)').order('created_at', { ascending: false });
+  document.getElementById('sections-tbody').innerHTML = (data || []).map(s => `
+    <tr><td>${s.classes?.name || '—'} · ${s.name}</td>
+    <td><span class="pill pill-${s.is_active?'active':'inactive'}">${s.is_active?'On':'Off'}</span></td>
+    <td><button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRow('sections','${s.id}',${s.is_active})">${s.is_active?'Off':'On'}</button></td></tr>
+  `).join('') || '<tr><td class="hint">—</td></tr>';
+}
+
+document.getElementById('form-section').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const classId = document.getElementById('sec-class').value;
+  const name = document.getElementById('sec-name').value.trim();
+  if (!classId || !name) return;
+  const { error } = await supabaseClient.from('sections').insert({ class_id: classId, name });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('sec-name').value = '';
+  await loadSections();
+});
+
+// ---- Master data: subjects ----
+async function loadSubjects() {
+  const { data } = await supabaseClient.from('subjects').select('*').order('name');
+  document.getElementById('subjects-tbody').innerHTML = (data || []).map(s => `
+    <tr><td>${s.name} ${s.code ? '<span class=\"hint\">('+s.code+')</span>':''}</td>
+    <td><span class="pill pill-${s.is_active?'active':'inactive'}">${s.is_active?'On':'Off'}</span></td>
+    <td><button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRow('subjects','${s.id}',${s.is_active})">${s.is_active?'Off':'On'}</button></td></tr>
+  `).join('') || '<tr><td class="hint">—</td></tr>';
+}
+
+document.getElementById('form-subject').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('sub-name').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('subjects').insert({ name, code: document.getElementById('sub-code').value.trim() || null });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('sub-name').value = '';
+  document.getElementById('sub-code').value = '';
+  await loadSubjects();
+});
+
+// ---- Shared toggle for master data tables ----
+async function toggleRow(table, id, isActive) {
+  const { error } = await supabaseClient.from(table).update({ is_active: !isActive }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadAllMasterData();
+}
+
+async function loadAllMasterData() {
+  await loadDepartments();
+  await loadClasses();
+  await loadSections();
+  await loadSubjects();
+}
+
+(async () => {
+  const profile = await renderShell('settings');
+  if (!profile) return;
+  if (!['founder', 'admin'].includes(profile.role)) {
+    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="glyph">&#128274;</div><h3>Access restricted</h3><p>এই পাতা শুধু admin/founder দেখতে পারবেন।</p></div>';
+    return;
+  }
+  await loadGeneral();
+  await loadSessions();
+  await loadAllMasterData();
+})();
+</script>
+</body>
+</html>

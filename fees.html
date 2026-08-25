@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Fees — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.tabs { display:flex; gap:4px; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x:auto; }
+.tab-btn { padding: 10px 16px; border:none; background:none; font-size:13.5px; font-weight:600; color: var(--color-ink-soft); cursor:pointer; border-bottom: 2.5px solid transparent; white-space:nowrap; }
+.tab-btn.active { color: var(--color-green-800); border-bottom-color: var(--color-green-800); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+.inline-form { display:flex; gap: var(--space-2); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-5); }
+.inline-form .field { margin-bottom: 0; min-width: 140px; }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2 data-i18n="nav_fees">ফি</h2>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="payments">পেমেন্ট রেকর্ড / Record Payment</button>
+        <button class="tab-btn" data-tab="due">বকেয়া রিপোর্ট / Due Report</button>
+        <button class="tab-btn" data-tab="structure">ফি কাঠামো / Fee Structure</button>
+        <button class="tab-btn" data-tab="types">ফি ধরন / Fee Types</button>
+      </div>
+
+      <!-- ===== RECORD PAYMENT ===== -->
+      <div class="tab-panel active" id="panel-payments">
+        <div class="card card-pad" style="margin-bottom: var(--space-5);">
+          <form id="form-payment" class="stack">
+            <div class="field">
+              <label>ছাত্র খুঁজুন / Search student</label>
+              <input type="text" id="p-student-search" placeholder="নাম বা আইডি লিখুন... / Type name or ID">
+              <div id="p-student-results" class="card" style="margin-top:4px; max-height:180px; overflow-y:auto; display:none;"></div>
+              <input type="hidden" id="p-student-id">
+              <span class="hint" id="p-student-selected"></span>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label>ফি কাঠামো / Fee structure</label>
+                <select id="p-fee-structure"></select>
+              </div>
+              <div class="field">
+                <label>পরিমাণ / Amount paid</label>
+                <input type="number" id="p-amount" min="0" step="0.01" required>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label>পদ্ধতি / Payment method</label>
+                <select id="p-method">
+                  <option value="cash">Cash</option>
+                  <option value="bkash">bKash</option>
+                  <option value="bank">Bank</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>স্ট্যাটাস / Status</label>
+                <select id="p-status">
+                  <option value="paid">পূর্ণ পরিশোধ / Paid</option>
+                  <option value="partial">আংশিক / Partial</option>
+                  <option value="due">বকেয়া / Due</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label>নোট / Notes</label>
+              <input type="text" id="p-notes">
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-save-payment">সংরক্ষণ করুন / Save payment</button>
+          </form>
+        </div>
+
+        <h3 style="font-size:15px; margin-bottom: var(--space-3);">সাম্প্রতিক পেমেন্ট / Recent payments</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Fee</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="payments-tbody"><tr><td colspan="6"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== DUE REPORT ===== -->
+      <div class="tab-panel" id="panel-due">
+        <div class="stat-grid" style="margin-bottom: var(--space-5);">
+          <div class="stat-card"><div class="accent"></div><div class="n" id="due-count">—</div><div class="l">বকেয়া এন্ট্রি / Due entries</div></div>
+          <div class="stat-card"><div class="accent"></div><div class="n" id="due-total">—</div><div class="l">মোট বকেয়া (আনুমানিক) / Est. total due</div></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Fee</th><th>Structure Amount</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="due-tbody"><tr><td colspan="5"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== FEE STRUCTURE ===== -->
+      <div class="tab-panel" id="panel-structure">
+        <form id="form-structure" class="inline-form">
+          <div class="field">
+            <label>ফি ধরন / Fee type</label>
+            <select id="s-fee-type"></select>
+          </div>
+          <div class="field">
+            <label data-i18n="class_label">শ্রেণি</label>
+            <select id="s-class"><option value="">সব / All</option></select>
+          </div>
+          <div class="field">
+            <label>পরিমাণ / Amount</label>
+            <input type="number" id="s-amount" min="0" step="0.01" required style="width:120px;">
+          </div>
+          <div class="field">
+            <label>নির্ধারিত তারিখ / Due date</label>
+            <input type="date" id="s-due-date">
+          </div>
+          <button type="submit" class="btn btn-primary">+ যোগ করুন / Add</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Fee type</th><th>Class</th><th>Amount</th><th>Due date</th></tr></thead>
+            <tbody id="structure-tbody"><tr><td colspan="4"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ===== FEE TYPES ===== -->
+      <div class="tab-panel" id="panel-types">
+        <form id="form-fee-type" class="inline-form">
+          <div class="field">
+            <label>নতুন ফি ধরনের নাম / New fee type name</label>
+            <input type="text" id="ft-name" placeholder="e.g. Admission Fee" required style="width:220px;">
+          </div>
+          <button type="submit" class="btn btn-primary">+ যোগ করুন / Add</button>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th data-i18n="status">Status</th><th></th></tr></thead>
+            <tbody id="fee-types-tbody"><tr><td colspan="3"><div class="skeleton" style="height:18px;"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+let feeTypesCache = [];
+let classesCache = [];
+let feeStructuresCache = [];
+let selectedStudent = null;
+
+// ---- Tabs ----
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'due') loadDueReport();
+  });
+});
+
+// ---- Lookups ----
+async function loadLookups() {
+  const [{ data: feeTypes }, { data: classes }] = await Promise.all([
+    supabaseClient.from('fee_types').select('id, name, is_active').order('name'),
+    supabaseClient.from('classes').select('id, name').eq('is_active', true).order('sort_order'),
+  ]);
+  feeTypesCache = feeTypes || [];
+  classesCache = classes || [];
+
+  document.getElementById('s-fee-type').innerHTML = feeTypesCache.filter(f => f.is_active).map(f => `<option value="${f.id}">${f.name}</option>`).join('') || '<option value="">— No fee types —</option>';
+  document.getElementById('s-class').innerHTML = '<option value="">সব / All</option>' + classesCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+  renderFeeTypesTable();
+  await loadFeeStructures();
+}
+
+// ---- Fee Types tab ----
+function renderFeeTypesTable() {
+  const tbody = document.getElementById('fee-types-tbody');
+  if (!feeTypesCache.length) { tbody.innerHTML = '<tr><td colspan="3" class="hint">কোনো ফি ধরন নেই / No fee types yet</td></tr>'; return; }
+  tbody.innerHTML = feeTypesCache.map(f => `
+    <tr>
+      <td>${f.name}</td>
+      <td><span class="pill pill-${f.is_active ? 'active' : 'inactive'}">${f.is_active ? 'Active' : 'Inactive'}</span></td>
+      <td><button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;" onclick="toggleFeeType('${f.id}', ${f.is_active})">${f.is_active ? 'Deactivate' : 'Activate'}</button></td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('form-fee-type').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('ft-name').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('fee_types').insert({ name });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('ft-name').value = '';
+  showToast('যোগ করা হয়েছে / Added', 'success');
+  await loadLookups();
+});
+
+async function toggleFeeType(id, isActive) {
+  const { error } = await supabaseClient.from('fee_types').update({ is_active: !isActive }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadLookups();
+}
+
+// ---- Fee Structure tab ----
+async function loadFeeStructures() {
+  const { data, error } = await supabaseClient
+    .from('fee_structures')
+    .select('id, amount, due_date, fee_types(name), classes(name)')
+    .order('due_date', { ascending: true });
+  if (error) { showToast(error.message, 'error'); return; }
+  feeStructuresCache = data || [];
+  renderStructureTable();
+  populatePaymentFeeSelect();
+}
+
+function renderStructureTable() {
+  const tbody = document.getElementById('structure-tbody');
+  if (!feeStructuresCache.length) { tbody.innerHTML = '<tr><td colspan="4" class="hint">এখনও কোনো ফি কাঠামো নেই / No fee structure yet</td></tr>'; return; }
+  tbody.innerHTML = feeStructuresCache.map(s => `
+    <tr>
+      <td>${s.fee_types?.name || '—'}</td>
+      <td>${s.classes?.name || 'সব / All'}</td>
+      <td>৳${Number(s.amount).toLocaleString()}</td>
+      <td>${s.due_date ? formatDate(s.due_date, getLang()) : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('form-structure').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    fee_type_id: document.getElementById('s-fee-type').value,
+    class_id: document.getElementById('s-class').value || null,
+    amount: parseFloat(document.getElementById('s-amount').value),
+    due_date: document.getElementById('s-due-date').value || null,
+  };
+  if (!payload.fee_type_id || isNaN(payload.amount)) { showToast('ফি ধরন ও পরিমাণ দিন / Provide fee type and amount', 'error'); return; }
+  const { error } = await supabaseClient.from('fee_structures').insert(payload);
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('form-structure').reset();
+  showToast('ফি কাঠামো যোগ হয়েছে / Fee structure added', 'success');
+  await loadFeeStructures();
+});
+
+function populatePaymentFeeSelect() {
+  const sel = document.getElementById('p-fee-structure');
+  sel.innerHTML = feeStructuresCache.map(s => `<option value="${s.id}">${s.fee_types?.name || '—'} — ${s.classes?.name || 'All'} (৳${Number(s.amount).toLocaleString()})</option>`).join('')
+    || '<option value="">— কোনো ফি কাঠামো নেই / No structures —</option>';
+}
+
+// ---- Payment tab: student search ----
+let searchTimeout;
+document.getElementById('p-student-search').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  selectedStudent = null;
+  document.getElementById('p-student-id').value = '';
+  if (!q) { document.getElementById('p-student-results').style.display = 'none'; return; }
+  searchTimeout = setTimeout(async () => {
+    const { data } = await supabaseClient
+      .from('students')
+      .select('id, full_name, permanent_student_id')
+      .or(`full_name.ilike.%${q}%,permanent_student_id.ilike.%${q}%`)
+      .eq('status', 'active')
+      .limit(8);
+    const box = document.getElementById('p-student-results');
+    if (!data || !data.length) { box.style.display = 'none'; return; }
+    box.innerHTML = data.map(s => `
+      <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--color-border); font-size:13.5px;" onclick="pickStudent('${s.id}','${s.full_name.replace(/'/g,"\\'")}','${s.permanent_student_id}')">
+        <strong>${s.full_name}</strong> <span class="hint">${s.permanent_student_id}</span>
+      </div>
+    `).join('');
+    box.style.display = 'block';
+  }, 250);
+});
+
+function pickStudent(id, name, permId) {
+  selectedStudent = { id, name, permId };
+  document.getElementById('p-student-id').value = id;
+  document.getElementById('p-student-search').value = name;
+  document.getElementById('p-student-selected').textContent = `নির্বাচিত / Selected: ${name} (${permId})`;
+  document.getElementById('p-student-results').style.display = 'none';
+}
+
+document.getElementById('form-payment').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const studentId = document.getElementById('p-student-id').value;
+  if (!studentId) { showToast('একজন ছাত্র নির্বাচন করুন / Select a student', 'error'); return; }
+  const btn = document.getElementById('btn-save-payment');
+  setBtnLoading(btn, true);
+  try {
+    const payload = {
+      student_id: studentId,
+      fee_structure_id: document.getElementById('p-fee-structure').value || null,
+      amount_paid: parseFloat(document.getElementById('p-amount').value) || 0,
+      payment_method: document.getElementById('p-method').value,
+      status: document.getElementById('p-status').value,
+      notes: document.getElementById('p-notes').value.trim() || null,
+    };
+    const { error } = await supabaseClient.from('payments').insert(payload);
+    if (error) throw error;
+    showToast('পেমেন্ট সংরক্ষিত হয়েছে / Payment saved', 'success');
+    document.getElementById('form-payment').reset();
+    document.getElementById('p-student-selected').textContent = '';
+    selectedStudent = null;
+    await loadRecentPayments();
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+async function loadRecentPayments() {
+  const { data, error } = await supabaseClient
+    .from('payments')
+    .select('id, amount_paid, payment_method, status, payment_date, students(full_name), fee_structures(fee_types(name))')
+    .order('created_at', { ascending: false })
+    .limit(15);
+  const tbody = document.getElementById('payments-tbody');
+  if (error) { tbody.innerHTML = `<tr><td colspan="6">${error.message}</td></tr>`; return; }
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="6" class="hint">এখনও কোনো পেমেন্ট নেই / No payments yet</td></tr>'; return; }
+  tbody.innerHTML = data.map(p => `
+    <tr>
+      <td>${p.students?.full_name || '—'}</td>
+      <td>${p.fee_structures?.fee_types?.name || '—'}</td>
+      <td>৳${Number(p.amount_paid).toLocaleString()}</td>
+      <td>${p.payment_method || '—'}</td>
+      <td><span class="pill pill-${p.status === 'due' ? 'due' : 'active'}">${p.status}</span></td>
+      <td>${formatDate(p.payment_date, getLang())}</td>
+    </tr>
+  `).join('');
+}
+
+// ---- Due report tab ----
+async function loadDueReport() {
+  const { data, error } = await supabaseClient
+    .from('payments')
+    .select('id, amount_paid, payment_date, status, students(full_name), fee_structures(amount, fee_types(name))')
+    .in('status', ['due', 'partial'])
+    .order('payment_date', { ascending: false });
+  const tbody = document.getElementById('due-tbody');
+  if (error) { tbody.innerHTML = `<tr><td colspan="5">${error.message}</td></tr>`; return; }
+  document.getElementById('due-count').textContent = (data || []).length;
+  const total = (data || []).reduce((sum, r) => sum + (Number(r.fee_structures?.amount || 0) - Number(r.amount_paid || 0)), 0);
+  document.getElementById('due-total').textContent = '৳' + Math.max(0, total).toLocaleString();
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="5" class="hint">কোনো বকেয়া নেই / No dues</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td>${r.students?.full_name || '—'}</td>
+      <td>${r.fee_structures?.fee_types?.name || '—'}</td>
+      <td>৳${Number(r.fee_structures?.amount || 0).toLocaleString()}</td>
+      <td><span class="pill pill-due">${r.status}</span></td>
+      <td>${formatDate(r.payment_date, getLang())}</td>
+    </tr>
+  `).join('');
+}
+
+(async () => {
+  const profile = await renderShell('fees');
+  if (!profile) return;
+  if (!['founder', 'admin'].includes(profile.role)) {
+    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="glyph">&#128274;</div><h3>Access restricted</h3><p>এই পাতা শুধু admin/founder দেখতে পারবেন।</p></div>';
+    return;
+  }
+  await loadLookups();
+  await loadRecentPayments();
+})();
+</script>
+</body>
+</html>

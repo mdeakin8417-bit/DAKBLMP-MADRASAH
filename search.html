@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Search — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.result-group { margin-bottom: var(--space-5); }
+.result-group h4 { font-size: 12px; text-transform:uppercase; letter-spacing:0.06em; color: var(--color-ink-soft); margin-bottom: var(--space-2); }
+.result-item { display:flex; align-items:center; justify-content:space-between; padding: 11px 14px; border:1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); margin-bottom: 6px; font-size: 13.5px; }
+.result-item .sub { font-size: 11.5px; color: var(--color-muted); }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2>খুঁজুন / Search</h2>
+      </div>
+
+      <div class="field" style="max-width: 480px; margin-bottom: var(--space-5);">
+        <input type="text" id="global-search" placeholder="ছাত্র, শিক্ষক, শ্রেণি, বিষয়... / Student, teacher, class, subject..." autofocus style="font-size:15px; padding:13px 16px;">
+      </div>
+
+      <div id="results-wrap">
+        <div class="empty-state">
+          <div class="glyph">&#128269;</div>
+          <h3>টাইপ শুরু করুন / Start typing</h3>
+          <p>ছাত্র আইডি, নাম, শিক্ষক, শ্রেণি বা বিষয় দিয়ে খুঁজুন।</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script>
+let myProfile = null;
+let searchTimeout;
+
+document.getElementById('global-search').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (q.length < 2) {
+    document.getElementById('results-wrap').innerHTML = `<div class="empty-state"><div class="glyph">&#128269;</div><h3>টাইপ শুরু করুন / Start typing</h3><p>কমপক্ষে ২ অক্ষর লিখুন / Type at least 2 characters</p></div>`;
+    return;
+  }
+  searchTimeout = setTimeout(() => runSearch(q), 280);
+});
+
+async function runSearch(q) {
+  const wrap = document.getElementById('results-wrap');
+  wrap.innerHTML = '<div class="skeleton" style="height:100px;"></div>';
+
+  const canSeeStaff = ['founder', 'admin', 'teacher'].includes(myProfile.role);
+  const promises = [];
+
+  if (canSeeStaff) {
+    promises.push(
+      supabaseClient.from('students').select('id, full_name, permanent_student_id, status').or(`full_name.ilike.%${q}%,permanent_student_id.ilike.%${q}%`).limit(8)
+    );
+    promises.push(
+      supabaseClient.from('teachers').select('id, full_name, teacher_code, designation').or(`full_name.ilike.%${q}%,teacher_code.ilike.%${q}%`).limit(8)
+    );
+  } else {
+    promises.push(Promise.resolve({ data: [] }));
+    promises.push(Promise.resolve({ data: [] }));
+  }
+
+  promises.push(supabaseClient.from('classes').select('id, name').ilike('name', `%${q}%`).limit(6));
+  promises.push(supabaseClient.from('subjects').select('id, name, code').or(`name.ilike.%${q}%,code.ilike.%${q}%`).limit(6));
+  promises.push(supabaseClient.from('notices').select('id, title').ilike('title', `%${q}%`).eq('is_published', true).limit(6));
+
+  const [{ data: students }, { data: teachers }, { data: classes }, { data: subjects }, { data: notices }] = await Promise.all(promises);
+
+  const groups = [];
+
+  if (students && students.length) {
+    groups.push({ title: `ছাত্রছাত্রী / Students (${students.length})`, items: students.map(s => `
+      <div class="result-item"><span><strong>${s.full_name}</strong> <span class="sub">${s.permanent_student_id}</span></span><span class="pill pill-${s.status==='active'?'active':'inactive'}">${s.status}</span></div>
+    `) });
+  }
+  if (teachers && teachers.length) {
+    groups.push({ title: `শিক্ষকবৃন্দ / Teachers (${teachers.length})`, items: teachers.map(t => `
+      <div class="result-item"><span><strong>${t.full_name}</strong> <span class="sub">${t.teacher_code || ''}</span></span><span class="sub">${t.designation || ''}</span></div>
+    `) });
+  }
+  if (classes && classes.length) {
+    groups.push({ title: `শ্রেণি / Classes (${classes.length})`, items: classes.map(c => `<div class="result-item"><span>${c.name}</span></div>`) });
+  }
+  if (subjects && subjects.length) {
+    groups.push({ title: `বিষয় / Subjects (${subjects.length})`, items: subjects.map(s => `<div class="result-item"><span>${s.name}</span><span class="sub">${s.code || ''}</span></div>`) });
+  }
+  if (notices && notices.length) {
+    groups.push({ title: `নোটিশ / Notices (${notices.length})`, items: notices.map(n => `<div class="result-item"><span>${n.title}</span></div>`) });
+  }
+
+  if (!groups.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="glyph">&#128269;</div><h3>কোনো ফলাফল নেই / No results</h3><p>"${q}" এর জন্য কিছু পাওয়া যায়নি।</p></div>`;
+    return;
+  }
+
+  wrap.innerHTML = groups.map(g => `
+    <div class="result-group">
+      <h4>${g.title}</h4>
+      ${g.items.join('')}
+    </div>
+  `).join('');
+}
+
+(async () => {
+  myProfile = await renderShell('search');
+})();
+</script>
+</body>
+</html>
