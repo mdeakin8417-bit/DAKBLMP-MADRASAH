@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>My Profile — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css?v=2">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2>আমার প্রোফাইল / My Profile</h2>
+      </div>
+
+      <div class="card card-pad" style="max-width: 480px; margin-bottom: var(--space-5);">
+        <h3 style="font-size:14.5px; margin-bottom: var(--space-4);">নাম পরিবর্তন / Change name</h3>
+        <form id="form-name" class="stack">
+          <div class="field">
+            <label data-i18n="full_name">পূর্ণ নাম</label>
+            <input type="text" id="pf-name" required>
+          </div>
+          <button type="submit" class="btn btn-primary" id="btn-save-name">সংরক্ষণ করুন / Save</button>
+        </form>
+      </div>
+
+      <div class="card card-pad" style="max-width: 480px;">
+        <h3 style="font-size:14.5px; margin-bottom: var(--space-4);">পাসওয়ার্ড পরিবর্তন / Change password</h3>
+        <form id="form-password" class="stack">
+          <div class="field">
+            <label>নতুন পাসওয়ার্ড / New password</label>
+            <input type="password" id="pf-password1" required minlength="6" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label>পুনরায় লিখুন / Confirm password</label>
+            <input type="password" id="pf-password2" required minlength="6" autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary" id="btn-save-password">পাসওয়ার্ড পরিবর্তন করুন / Change password</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
+<script src="js/ui.js?v=2"></script>
+<script src="js/auth.js?v=2"></script>
+<script src="js/shell.js?v=2"></script>
+<script>
+// This page bypasses the normal approval-gated shell so a person can fix
+// their name or password even while their account is still pending —
+// it uses requireAuth() directly instead of renderShell().
+(async () => {
+  const profile = await requireAuth();
+  if (!profile) return;
+
+  if (profile.is_approved && profile.role) {
+    // Approved users get the full nav shell
+    await renderShell('profile');
+  } else {
+    // Pending users get a minimal header with just logout, no nav
+    document.getElementById('shell-topbar-slot').innerHTML = `
+      <header class="topbar">
+        <div class="topbar-title"><strong>DAKBLMP MADRASAH</strong> — অনুমোদনের অপেক্ষায় / Pending approval</div>
+        <button class="btn btn-ghost" onclick="signOut()">লগ আউট / Log out</button>
+      </header>
+    `;
+  }
+
+  document.getElementById('pf-name').value = profile.full_name || '';
+})();
+
+document.getElementById('form-name').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-name');
+  setBtnLoading(btn, true);
+  try {
+    const newName = document.getElementById('pf-name').value.trim();
+    if (!newName) throw new Error('নাম খালি রাখা যাবে না / Name cannot be empty');
+    const session = await getSession();
+    const { error } = await supabaseClient.from('profiles').update({ full_name: newName }).eq('id', session.user.id);
+    if (error) throw error;
+    showToast('নাম আপডেট হয়েছে / Name updated', 'success');
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+document.getElementById('form-password').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const p1 = document.getElementById('pf-password1').value;
+  const p2 = document.getElementById('pf-password2').value;
+  if (p1 !== p2) { showToast('পাসওয়ার্ড মিলছে না / Passwords do not match', 'error'); return; }
+  const btn = document.getElementById('btn-save-password');
+  setBtnLoading(btn, true);
+  try {
+    const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+    if (error) throw error;
+    showToast('পাসওয়ার্ড পরিবর্তিত হয়েছে / Password changed', 'success');
+    document.getElementById('form-password').reset();
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+</script>
+</body>
+</html>
