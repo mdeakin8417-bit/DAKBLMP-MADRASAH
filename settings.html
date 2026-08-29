@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Settings — DAKBLMP MADRASAH</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 .tabs { display:flex; gap:4px; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x:auto; }
@@ -34,6 +34,7 @@
         <button class="tab-btn active" data-tab="general">সাধারণ তথ্য / General</button>
         <button class="tab-btn" data-tab="sessions">শিক্ষাবর্ষ / Sessions</button>
         <button class="tab-btn" data-tab="masterdata">মাস্টার ডাটা / Master Data</button>
+        <button class="tab-btn" data-tab="print">প্রিন্ট সেন্টার / Print Center</button>
       </div>
 
       <!-- ===== GENERAL ===== -->
@@ -118,18 +119,127 @@
           </div>
         </div>
       </div>
+
+      <!-- ===== PRINT CENTER ===== -->
+      <div class="tab-panel" id="panel-print">
+        <div class="card card-pad" style="max-width: 560px; margin-bottom: var(--space-5);">
+          <h3 style="font-size:14.5px; margin-bottom: var(--space-4);">ছাত্রের রশিদ প্রিন্ট / Print student receipt</h3>
+          <div class="field">
+            <label>ছাত্র খুঁজুন / Search student</label>
+            <input type="text" id="pr-student-search" placeholder="নাম বা আইডি লিখুন... / Type name or ID">
+            <div id="pr-student-results" class="card" style="margin-top:4px; max-height:180px; overflow-y:auto; display:none;"></div>
+          </div>
+          <div id="pr-payments-wrap"></div>
+        </div>
+      </div>
     </div>
 
     <div id="shell-bottomnav-slot"></div>
   </div>
 </div>
 
-<script src="js/supabase-client.js"></script>
-<script src="js/i18n.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/shell.js"></script>
+<!-- Printable receipt (hidden until print) -->
+<div id="receipt-print-area" style="display:none;"></div>
+
+<style>
+@media print {
+  .app-shell > *:not(#receipt-print-area-wrap) { display: none !important; }
+  #receipt-print-area { display: block !important; }
+  body { background: #fff; }
+}
+.receipt-box { border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); font-family: var(--font-body-en); max-width: 420px; }
+.receipt-head { text-align:center; border-bottom: 2px solid var(--color-green-800); padding-bottom: var(--space-3); margin-bottom: var(--space-3); }
+.receipt-head h2 { font-size: 17px; }
+.receipt-row { display:flex; justify-content:space-between; font-size: 13.5px; padding: 4px 0; }
+.receipt-total { border-top: 1px dashed var(--color-border); margin-top: var(--space-3); padding-top: var(--space-3); font-weight:700; }
+</style>
+
+<script src="js/supabase-client.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
+<script src="js/ui.js?v=2"></script>
+<script src="js/auth.js?v=2"></script>
+<script src="js/shell.js?v=2"></script>
 <script>
+let prSearchTimeout;
+document.getElementById('pr-student-search').addEventListener('input', (e) => {
+  clearTimeout(prSearchTimeout);
+  const q = e.target.value.trim();
+  if (!q) { document.getElementById('pr-student-results').style.display = 'none'; return; }
+  prSearchTimeout = setTimeout(async () => {
+    const { data } = await supabaseClient
+      .from('students')
+      .select('id, full_name, permanent_student_id')
+      .or(`full_name.ilike.%${q}%,permanent_student_id.ilike.%${q}%`)
+      .limit(8);
+    const box = document.getElementById('pr-student-results');
+    if (!data || !data.length) { box.style.display = 'none'; return; }
+    box.innerHTML = data.map(s => `
+      <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--color-border); font-size:13.5px;" onclick="loadStudentPayments('${s.id}','${s.full_name.replace(/'/g,"\\'")}','${s.permanent_student_id}')">
+        <strong>${s.full_name}</strong> <span class="hint">${s.permanent_student_id}</span>
+      </div>
+    `).join('');
+    box.style.display = 'block';
+  }, 250);
+});
+
+async function loadStudentPayments(studentId, name, permId) {
+  document.getElementById('pr-student-search').value = `${name} (${permId})`;
+  document.getElementById('pr-student-results').style.display = 'none';
+
+  const { data: payments } = await supabaseClient
+    .from('payments')
+    .select('id, amount_paid, payment_method, status, payment_date, notes, fee_structures(amount, fee_types(name))')
+    .eq('student_id', studentId)
+    .order('payment_date', { ascending: false });
+
+  const wrap = document.getElementById('pr-payments-wrap');
+  if (!payments || !payments.length) {
+    wrap.innerHTML = '<p class="hint" style="margin-top: var(--space-4);">এই ছাত্রের কোনো পেমেন্ট রেকর্ড নেই / No payment records for this student</p>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="table-wrap" style="margin-top: var(--space-4);">
+      <table>
+        <thead><tr><th>Fee</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          ${payments.map(p => `
+            <tr>
+              <td>${p.fee_structures?.fee_types?.name || '—'}</td>
+              <td>৳${Number(p.amount_paid).toLocaleString()}</td>
+              <td>${formatDate(p.payment_date, getLang())}</td>
+              <td><span class="pill pill-${p.status === 'due' ? 'due' : 'active'}">${p.status}</span></td>
+              <td><button class="btn btn-primary" style="padding:5px 12px; font-size:12px;" onclick='printReceipt(${JSON.stringify({ name, permId, ...p }).replace(/'/g, "&apos;")})'>🖨️ Print</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function printReceipt(payment) {
+  const orgData = await supabaseClient.from('settings').select('value').eq('key', 'madrasah_general').maybeSingle();
+  const orgName = orgData.data?.value?.name || 'DAKBLMP MADRASAH';
+
+  const area = document.getElementById('receipt-print-area');
+  area.innerHTML = `
+    <div class="receipt-box">
+      <div class="receipt-head">
+        <h2>${orgName}</h2>
+        <div class="hint">Fee Payment Receipt</div>
+      </div>
+      <div class="receipt-row"><span>Student</span><strong>${payment.name}</strong></div>
+      <div class="receipt-row"><span>Permanent ID</span><strong>${payment.permId}</strong></div>
+      <div class="receipt-row"><span>Fee Type</span><strong>${payment.fee_structures?.fee_types?.name || '—'}</strong></div>
+      <div class="receipt-row"><span>Payment Method</span><strong>${payment.payment_method || '—'}</strong></div>
+      <div class="receipt-row"><span>Date</span><strong>${formatDate(payment.payment_date, 'en')}</strong></div>
+      <div class="receipt-row"><span>Status</span><strong>${payment.status}</strong></div>
+      <div class="receipt-row receipt-total"><span>Amount Paid</span><strong>৳${Number(payment.amount_paid).toLocaleString()}</strong></div>
+    </div>
+  `;
+  window.print();
+}
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -285,58 +395,4 @@ document.getElementById('form-section').addEventListener('submit', async (e) => 
   const classId = document.getElementById('sec-class').value;
   const name = document.getElementById('sec-name').value.trim();
   if (!classId || !name) return;
-  const { error } = await supabaseClient.from('sections').insert({ class_id: classId, name });
-  if (error) { showToast(error.message, 'error'); return; }
-  document.getElementById('sec-name').value = '';
-  await loadSections();
-});
-
-// ---- Master data: subjects ----
-async function loadSubjects() {
-  const { data } = await supabaseClient.from('subjects').select('*').order('name');
-  document.getElementById('subjects-tbody').innerHTML = (data || []).map(s => `
-    <tr><td>${s.name} ${s.code ? '<span class=\"hint\">('+s.code+')</span>':''}</td>
-    <td><span class="pill pill-${s.is_active?'active':'inactive'}">${s.is_active?'On':'Off'}</span></td>
-    <td><button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRow('subjects','${s.id}',${s.is_active})">${s.is_active?'Off':'On'}</button></td></tr>
-  `).join('') || '<tr><td class="hint">—</td></tr>';
-}
-
-document.getElementById('form-subject').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('sub-name').value.trim();
-  if (!name) return;
-  const { error } = await supabaseClient.from('subjects').insert({ name, code: document.getElementById('sub-code').value.trim() || null });
-  if (error) { showToast(error.message, 'error'); return; }
-  document.getElementById('sub-name').value = '';
-  document.getElementById('sub-code').value = '';
-  await loadSubjects();
-});
-
-// ---- Shared toggle for master data tables ----
-async function toggleRow(table, id, isActive) {
-  const { error } = await supabaseClient.from(table).update({ is_active: !isActive }).eq('id', id);
-  if (error) { showToast(error.message, 'error'); return; }
-  await loadAllMasterData();
-}
-
-async function loadAllMasterData() {
-  await loadDepartments();
-  await loadClasses();
-  await loadSections();
-  await loadSubjects();
-}
-
-(async () => {
-  const profile = await renderShell('settings');
-  if (!profile) return;
-  if (!['founder', 'admin'].includes(profile.role)) {
-    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="glyph">&#128274;</div><h3>Access restricted</h3><p>এই পাতা শুধু admin/founder দেখতে পারবেন।</p></div>';
-    return;
-  }
-  await loadGeneral();
-  await loadSessions();
-  await loadAllMasterData();
-})();
-</script>
-</body>
-</html>
+  const { error } = await supabaseClient.from(
