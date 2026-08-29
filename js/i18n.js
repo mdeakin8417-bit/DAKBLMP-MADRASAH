@@ -220,7 +220,13 @@ function applyI18n() {
 
 document.addEventListener('DOMContentLoaded', () => {
   applyI18n();
-  document.querySelectorAll('[data-lang-btn]').forEach(btn => {
-    btn.addEventListener('click', () => setLang(btn.getAttribute('data-lang-btn')));
-  });
+});
+
+// Event delegation: works for lang-switch buttons that exist at page load
+// (e.g. the login page) AND ones injected later by shell.js (sidebar/topbar
+// on every inner page) — a plain querySelectorAll-at-load approach misses
+// those, which is why "EN" previously did nothing outside the login page.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-lang-btn]');
+  if (btn) setLang(btn.getAttribute('data-lang-btn'));
 });
