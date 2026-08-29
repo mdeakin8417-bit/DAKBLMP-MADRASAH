@@ -111,12 +111,11 @@ async function renderShell(activeKey) {
       </div>
       <div class="row" style="gap: 12px;">
         <a href="search.html" title="Search" style="color: var(--color-ink-soft); font-size: 17px; display:flex; align-items:center;">&#128269;</a>
-        <a href="profile.html" title="My Profile" style="color: var(--color-ink-soft); font-size: 17px; display:flex; align-items:center;">&#128100;</a>
         <div class="lang-switch">
           <button data-lang-btn="bn">বাং</button>
           <button data-lang-btn="en">EN</button>
         </div>
-        <div class="avatar" title="${profile.full_name}">${initials(profile.full_name)}</div>
+        <a href="profile.html" class="avatar" title="আমার অ্যাকাউন্ট / My Account" style="text-decoration:none;">${initials(profile.full_name)}</a>
       </div>
     </header>
   `;
@@ -129,4 +128,4 @@ async function renderShell(activeKey) {
 
   applyI18n();
   return profile;
-    }
+}
