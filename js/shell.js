@@ -103,8 +103,11 @@ async function renderShell(activeKey) {
 
   const topbarHtml = `
     <header class="topbar">
-      <div class="topbar-title">
-        <span data-i18n="${NAV_ITEMS.find(i => i.key === activeKey)?.label || 'nav_dashboard'}"></span>
+      <div class="row" style="gap: 10px;">
+        <button onclick="history.back()" title="Back" style="background:none; border:none; font-size:19px; color: var(--color-ink-soft); cursor:pointer; display:flex; align-items:center; padding:0;">&#8592;</button>
+        <div class="topbar-title">
+          <span data-i18n="${NAV_ITEMS.find(i => i.key === activeKey)?.label || 'nav_dashboard'}"></span>
+        </div>
       </div>
       <div class="row" style="gap: 12px;">
         <a href="search.html" title="Search" style="color: var(--color-ink-soft); font-size: 17px; display:flex; align-items:center;">&#128269;</a>
@@ -126,4 +129,4 @@ async function renderShell(activeKey) {
 
   applyI18n();
   return profile;
-}
+    }
