@@ -35,6 +35,7 @@ const I18N = {
     // Nav
     nav_dashboard: "Dashboard",
     nav_my_children: "My Children",
+    nav_media: "Media & Introduction",
     nav_students: "Students",
     nav_teachers: "Teachers",
     nav_attendance: "Attendance",
@@ -126,6 +127,7 @@ const I18N = {
     // Nav
     nav_dashboard: "ড্যাশবোর্ড",
     nav_my_children: "আমার সন্তান",
+    nav_media: "মিডিয়া ও পরিচিতি",
     nav_students: "ছাত্রছাত্রী",
     nav_teachers: "শিক্ষকবৃন্দ",
     nav_attendance: "হাজিরা",
