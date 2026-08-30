@@ -89,17 +89,47 @@ async function renderShell(activeKey) {
     </aside>
   `;
 
-  // Bottom nav (mobile) — first 4 + more collapses into settings/menu
-  const mobileItems = visibleItems.slice(0, 5);
+  // Bottom nav (mobile) — first 4 + a "More" sheet for everything else
+  const primaryItems = visibleItems.slice(0, 4);
+  const overflowItems = visibleItems.slice(4);
+  const overflowActive = overflowItems.some(i => i.key === activeKey);
   const bottomNavHtml = `
     <nav class="bottom-nav">
-      ${mobileItems.map(i => `
+      ${primaryItems.map(i => `
         <button onclick="window.location.href='${i.href}'" class="${i.key === activeKey ? 'active' : ''}">
           <span class="icon">${i.icon}</span>
           <span data-i18n="${i.label}">${i.label}</span>
         </button>
       `).join('')}
+      ${overflowItems.length ? `
+        <button onclick="document.getElementById('more-sheet').removeAttribute('hidden')" class="${overflowActive ? 'active' : ''}">
+          <span class="icon">&#8942;</span>
+          <span>আরও / More</span>
+        </button>
+      ` : ''}
     </nav>
+    ${overflowItems.length ? `
+      <div class="modal-backdrop" id="more-sheet" hidden>
+        <div class="modal">
+          <div class="modal-head">
+            <h3>আরও মেনু / More</h3>
+            <button class="modal-close" onclick="document.getElementById('more-sheet').setAttribute('hidden','')">&times;</button>
+          </div>
+          <div class="stack">
+            ${overflowItems.map(i => `
+              <a class="nav-link" style="color: var(--color-ink); background: ${i.key === activeKey ? 'var(--color-green-50)' : 'transparent'};" href="${i.href}">
+                <span class="icon">${i.icon}</span>
+                <span data-i18n="${i.label}">${i.label}</span>
+              </a>
+            `).join('')}
+            <button class="nav-link" style="color: var(--color-danger);" onclick="signOut()">
+              <span class="icon">&#8630;</span>
+              <span data-i18n="nav_logout">লগ আউট</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    ` : ''}
   `;
 
   const topbarHtml = `
