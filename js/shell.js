@@ -8,6 +8,7 @@
 const NAV_ITEMS = [
   { key: 'dashboard', href: 'dashboard.html', icon: '&#8962;', label: 'nav_dashboard', roles: 'all' },
   { key: 'my-children', href: 'guardian.html', icon: '&#128118;', label: 'nav_my_children', roles: ['guardian'] },
+  { key: 'media', href: 'media.html', icon: '&#128247;', label: 'nav_media', roles: 'all' },
   { key: 'students', href: 'students.html', icon: '&#128101;', label: 'nav_students', roles: ['founder','admin','teacher'] },
   { key: 'teachers', href: 'teachers.html', icon: '&#127891;', label: 'nav_teachers', roles: ['founder','admin'] },
   { key: 'attendance', href: 'attendance.html', icon: '&#10003;', label: 'nav_attendance', roles: ['founder','admin','teacher'] },
