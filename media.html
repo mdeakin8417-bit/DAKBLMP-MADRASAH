@@ -88,19 +88,29 @@
         <label>ধরন / Type</label>
         <select id="am-type">
           <option value="image">ছবি / Image</option>
-          <option value="video">ভিডিও (YouTube link) / Video</option>
+          <option value="video">ভিডিও / Video</option>
         </select>
       </div>
       <div class="field">
+        <label>ফাইল আপলোড করুন / Upload a file</label>
+        <input type="file" id="am-file" accept="image/*,video/*">
+        <span class="hint" id="am-upload-progress"></span>
+      </div>
+      <div class="row" style="align-items:center; gap:10px; margin: 4px 0;">
+        <div style="flex:1; height:1px; background:var(--color-border);"></div>
+        <span class="hint">অথবা / OR</span>
+        <div style="flex:1; height:1px; background:var(--color-border);"></div>
+      </div>
+      <div class="field">
         <label>লিংক / URL</label>
-        <input type="url" id="am-url" placeholder="https://..." required>
+        <input type="url" id="am-url" placeholder="https://...">
         <span class="hint">ছবির সরাসরি লিংক, অথবা YouTube ভিডিও লিংক দিন / Direct image URL, or a YouTube video link</span>
       </div>
       <div class="field">
         <label>ক্যাপশন (ঐচ্ছিক) / Caption (optional)</label>
         <input type="text" id="am-caption">
       </div>
-      <button type="submit" class="btn btn-primary btn-block">যোগ করুন / Add</button>
+      <button type="submit" class="btn btn-primary btn-block" id="btn-submit-media">যোগ করুন / Add</button>
     </form>
   </div>
 </div>
@@ -194,12 +204,32 @@ document.getElementById('btn-add-media').addEventListener('click', () => {
 
 document.getElementById('form-add-media').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const btn = document.getElementById('btn-submit-media');
+  const progressEl = document.getElementById('am-upload-progress');
+  setBtnLoading(btn, true);
   try {
     const session = await getSession();
+    const fileInput = document.getElementById('am-file');
+    const file = fileInput.files[0];
+    let fileUrl = document.getElementById('am-url').value.trim();
+
+    if (file) {
+      progressEl.textContent = 'আপলোড হচ্ছে... / Uploading...';
+      const ext = file.name.split('.').pop();
+      const path = `gallery/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabaseClient.storage.from('gallery').upload(path, file);
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabaseClient.storage.from('gallery').getPublicUrl(path);
+      fileUrl = urlData.publicUrl;
+      progressEl.textContent = '';
+    }
+
+    if (!fileUrl) throw new Error('একটি ফাইল আপলোড করুন অথবা লিংক দিন / Upload a file or provide a URL');
+
     const payload = {
       owner_profile_id: session.user.id,
       related_table: 'madrasah_gallery',
-      file_url: document.getElementById('am-url').value.trim(),
+      file_url: fileUrl,
       file_type: document.getElementById('am-type').value,
       caption: document.getElementById('am-caption').value.trim() || null,
     };
@@ -209,7 +239,10 @@ document.getElementById('form-add-media').addEventListener('submit', async (e) =
     closeModal('modal-add-media');
     await loadGallery();
   } catch (err) {
+    progressEl.textContent = '';
     showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
   }
 });
 
@@ -227,4 +260,4 @@ document.getElementById('form-add-media').addEventListener('submit', async (e) =
 })();
 </script>
 </body>
-        </html>
+          </html>
