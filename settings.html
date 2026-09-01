@@ -380,7 +380,7 @@ document.getElementById('form-class').addEventListener('submit', async (e) => {
   await loadClasses();
 });
 
-// ---- Master data: sections ----
+  // ---- Master data: sections ----
 async function loadSections() {
   const { data } = await supabaseClient.from('sections').select('*, classes(name)').order('created_at', { ascending: false });
   document.getElementById('sections-tbody').innerHTML = (data || []).map(s => `
@@ -395,4 +395,58 @@ document.getElementById('form-section').addEventListener('submit', async (e) => 
   const classId = document.getElementById('sec-class').value;
   const name = document.getElementById('sec-name').value.trim();
   if (!classId || !name) return;
-  const { error } = await supabaseClient.from(
+  const { error } = await supabaseClient.from('sections').insert({ class_id: classId, name });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('sec-name').value = '';
+  await loadSections();
+});
+
+// ---- Master data: subjects ----
+async function loadSubjects() {
+  const { data } = await supabaseClient.from('subjects').select('*').order('name');
+  document.getElementById('subjects-tbody').innerHTML = (data || []).map(s => `
+    <tr><td>${s.name} ${s.code ? '<span class=\"hint\">('+s.code+')</span>':''}</td>
+    <td><span class="pill pill-${s.is_active?'active':'inactive'}">${s.is_active?'On':'Off'}</span></td>
+    <td><button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;" onclick="toggleRow('subjects','${s.id}',${s.is_active})">${s.is_active?'Off':'On'}</button></td></tr>
+  `).join('') || '<tr><td class="hint">—</td></tr>';
+}
+
+document.getElementById('form-subject').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('sub-name').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('subjects').insert({ name, code: document.getElementById('sub-code').value.trim() || null });
+  if (error) { showToast(error.message, 'error'); return; }
+  document.getElementById('sub-name').value = '';
+  document.getElementById('sub-code').value = '';
+  await loadSubjects();
+});
+
+// ---- Shared toggle for master data tables ----
+async function toggleRow(table, id, isActive) {
+  const { error } = await supabaseClient.from(table).update({ is_active: !isActive }).eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  await loadAllMasterData();
+}
+
+async function loadAllMasterData() {
+  await loadDepartments();
+  await loadClasses();
+  await loadSections();
+  await loadSubjects();
+}
+
+(async () => {
+  const profile = await renderShell('settings');
+  if (!profile) return;
+  if (!['founder', 'admin'].includes(profile.role)) {
+    document.querySelector('.content').innerHTML = '<div class="empty-state"><div class="glyph">&#128274;</div><h3>Access restricted</h3><p>এই পাতা শুধু admin/founder দেখতে পারবেন।</p></div>';
+    return;
+  }
+  await loadGeneral();
+  await loadSessions();
+  await loadAllMasterData();
+})();
+</script>
+</body>
+</html>
