@@ -104,6 +104,10 @@
           </select>
         </div>
       </div>
+            <div class="field">
+        <label>অভিভাবকের নাম / Guardian's full name</label>
+        <input type="text" id="f-guardian-name">
+            </div>
       <div class="grid-2">
         <div class="field">
           <label>অভিভাবকের সম্পর্ক / Relationship</label>
@@ -223,7 +227,7 @@ function renderStudentsTable(students) {
       </td>
       <td>${s.full_name}</td>
       <td>${s.current_class ? `${s.current_class}${s.current_roll ? ' · Roll ' + s.current_roll : ''}` : '—'}</td>
-      <td>${s.guardian_contact || '—'}</td>
+      <td>${s.guardian_name ? s.guardian_name + (s.guardian_contact ? ' · ' + s.guardian_contact : '') : (s.guardian_contact || '—')}</td>
       <td><span class="pill pill-${s.status === 'active' ? 'active' : 'inactive'}">${t(s.status) || s.status}</span></td>
       <td><button class="btn btn-ghost" style="padding:5px 10px; font-size:12px;" onclick="openLinkGuardian('${s.id}', '${s.full_name.replace(/'/g,"\\'")}')">Manage</button></td>
     </tr>
@@ -233,8 +237,8 @@ function renderStudentsTable(students) {
 async function loadStudents() {
   const { data, error } = await supabaseClient
     .from('students')
-    .select('id, permanent_student_id, full_name, guardian_contact, status, academic_history(academic_roll, created_at, classes(name), academic_sessions(status))')
-    .order('created_at', { ascending: false });
+    .select('id, permanent_student_id, full_name, guardian_contact, guardian_name, status, academic_history(academic_roll, created_at, classes(name), academic_sessions(status))')
+    .order\u003C/tr>('created_at', { ascending: false });
   if (error) {
     showToast(error.message, 'error');
     return;
@@ -289,6 +293,7 @@ document.getElementById('form-new-student').addEventListener('submit', async (e)
       date_of_birth: document.getElementById('f-dob').value || null,
       gender: document.getElementById('f-gender').value,
       guardian_contact: document.getElementById('f-guardian-contact').value.trim() || null,
+      guardian_name: document.getElementById('f-guardian-name').value.trim() || null,
       guardian_relationship: relationship || null,
       address: document.getElementById('f-address').value.trim() || null,
       admission_session_id: currentSession ? currentSession.id : null,
