@@ -238,7 +238,7 @@ async function loadStudents() {
   const { data, error } = await supabaseClient
     .from('students')
     .select('id, permanent_student_id, full_name, guardian_contact, guardian_name, status, academic_history(academic_roll, created_at, classes(name), academic_sessions(status))')
-    .order\u003C/tr>('created_at', { ascending: false });
+    .order('created_at', { ascending: false });
   if (error) {
     showToast(error.message, 'error');
     return;
