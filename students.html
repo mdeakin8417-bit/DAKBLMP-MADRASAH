@@ -59,10 +59,12 @@
 <div class="modal-backdrop" id="modal-new-student" hidden>
   <div class="modal">
     <div class="modal-head">
-      <h3 data-i18n="new_student">নতুন ছাত্র</h3>
+      <h3 id="student-modal-title" data-i18n="new_student">নতুন ছাত্র</h3>
       <button class="modal-close" onclick="closeModal('modal-new-student')">&times;</button>
     </div>
     <form id="form-new-student" class="stack">
+      <input type="hidden" id="f-edit-id">
+      <input type="hidden" id="f-edit-history-id">
       <div class="field">
         <label data-i18n="full_name">পূর্ণ নাম</label>
         <input type="text" id="f-name" required>
@@ -104,10 +106,10 @@
           </select>
         </div>
       </div>
-            <div class="field">
+      <div class="field">
         <label>অভিভাবকের নাম / Guardian's full name</label>
         <input type="text" id="f-guardian-name">
-            </div>
+      </div>
       <div class="grid-2">
         <div class="field">
           <label>অভিভাবকের সম্পর্ক / Relationship</label>
@@ -229,7 +231,10 @@ function renderStudentsTable(students) {
       <td>${s.current_class ? `${s.current_class}${s.current_roll ? ' · Roll ' + s.current_roll : ''}` : '—'}</td>
       <td>${s.guardian_name ? s.guardian_name + (s.guardian_contact ? ' · ' + s.guardian_contact : '') : (s.guardian_contact || '—')}</td>
       <td><span class="pill pill-${s.status === 'active' ? 'active' : 'inactive'}">${t(s.status) || s.status}</span></td>
-      <td><button class="btn btn-ghost" style="padding:5px 10px; font-size:12px;" onclick="openLinkGuardian('${s.id}', '${s.full_name.replace(/'/g,"\\'")}')">Manage</button></td>
+      <td>
+        <button class="btn btn-ghost" style="padding:5px 10px; font-size:12px;" onclick="openEditStudent('${s.id}')">Edit</button>
+        <button class="btn btn-ghost" style="padding:5px 10px; font-size:12px;" onclick="openLinkGuardian('${s.id}', '${s.full_name.replace(/'/g,"\\'")}')">Manage</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -264,31 +269,71 @@ document.getElementById('search-input').addEventListener('input', (e) => {
   ));
 });
 
-document.getElementById('btn-new-student').addEventListener('click', () => openModal('modal-new-student'));
+document.getElementById('btn-new-student').addEventListener('click', () => {
+  document.getElementById('form-new-student').reset();
+  document.getElementById('f-edit-id').value = '';
+  document.getElementById('f-edit-history-id').value = '';
+  document.getElementById('student-modal-title').textContent = 'নতুন ছাত্র / New student';
+  document.getElementById('f-permanent-id').removeAttribute('disabled');
+  openModal('modal-new-student');
+});
+
+async function openEditStudent(studentId) {
+  const s = allStudents.find(x => x.id === studentId);
+  if (!s) return;
+  document.getElementById('form-new-student').reset();
+  document.getElementById('student-modal-title').textContent = 'ছাত্রের তথ্য সম্পাদনা / Edit student';
+  document.getElementById('f-edit-id').value = s.id;
+  document.getElementById('f-name').value = s.full_name || '';
+  document.getElementById('f-permanent-id').value = s.permanent_student_id || '';
+  document.getElementById('f-permanent-id').setAttribute('disabled', ''); // permanent ID is locked once set
+  document.getElementById('f-dob').value = s.date_of_birth || '';
+  document.getElementById('f-gender').value = s.gender || 'male';
+  document.getElementById('f-guardian-name').value = s.guardian_name || '';
+  document.getElementById('f-guardian-contact').value = s.guardian_contact || '';
+  document.getElementById('f-address').value = s.address || '';
+
+  const relOptions = Array.from(document.getElementById('f-guardian-relationship').options).map(o => o.value);
+  if (s.guardian_relationship && relOptions.includes(s.guardian_relationship)) {
+    document.getElementById('f-guardian-relationship').value = s.guardian_relationship;
+    document.getElementById('f-guardian-relationship-other-wrap').setAttribute('hidden', '');
+  } else if (s.guardian_relationship) {
+    document.getElementById('f-guardian-relationship').value = 'other';
+    document.getElementById('f-guardian-relationship-other-wrap').removeAttribute('hidden');
+    document.getElementById('f-guardian-relationship-other').value = s.guardian_relationship;
+  }
+
+  // Load this student's current academic_history row (class/section/roll), if any
+  const { data: history } = await supabaseClient
+    .from('academic_history')
+    .select('id, class_id, section_id, academic_roll')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const current = history && history[0];
+  document.getElementById('f-edit-history-id').value = current ? current.id : '';
+  if (current) {
+    document.getElementById('f-class').value = current.class_id || '';
+    await loadSections();
+    document.getElementById('f-section').value = current.section_id || '';
+    document.getElementById('f-academic-roll').value = current.academic_roll || '';
+  }
+
+  openModal('modal-new-student');
+}
 
 document.getElementById('form-new-student').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btn-save-student');
   setBtnLoading(btn, true);
   try {
-    let permanentId = document.getElementById('f-permanent-id').value.trim();
-    if (!permanentId) {
-      const year = new Date().getFullYear();
-      const { count } = await supabaseClient
-        .from('students')
-        .select('*', { count: 'exact', head: true })
-        .like('permanent_student_id', `${year}%`);
-      const serial = String((count || 0) + 1).padStart(4, '0');
-      permanentId = `${year}${serial}`;
-    }
-
+    const editId = document.getElementById('f-edit-id').value;
     const classId = document.getElementById('f-class').value || null;
     const sectionId = document.getElementById('f-section').value || null;
     let relationship = document.getElementById('f-guardian-relationship').value;
     if (relationship === 'other') relationship = document.getElementById('f-guardian-relationship-other').value.trim();
 
-    const { data: student, error } = await supabaseClient.from('students').insert({
-      permanent_student_id: permanentId,
+    const studentFields = {
       full_name: document.getElementById('f-name').value.trim(),
       date_of_birth: document.getElementById('f-dob').value || null,
       gender: document.getElementById('f-gender').value,
@@ -296,24 +341,64 @@ document.getElementById('form-new-student').addEventListener('submit', async (e)
       guardian_name: document.getElementById('f-guardian-name').value.trim() || null,
       guardian_relationship: relationship || null,
       address: document.getElementById('f-address').value.trim() || null,
-      admission_session_id: currentSession ? currentSession.id : null,
-    }).select().single();
-    if (error) throw error;
+    };
 
-    // Seed academic_history for the admission session/class/section, if a class was picked
-    if (classId && currentSession) {
-      await supabaseClient.from('academic_history').insert({
-        student_id: student.id,
-        academic_session_id: currentSession.id,
-        class_id: classId,
-        section_id: sectionId,
-        academic_roll: document.getElementById('f-academic-roll').value.trim() || null,
-      });
+    let studentId = editId;
+
+    if (editId) {
+      // ---- EDIT MODE: update existing student (permanent_student_id is never touched) ----
+      const { error } = await supabaseClient.from('students').update(studentFields).eq('id', editId);
+      if (error) throw error;
+
+      const historyId = document.getElementById('f-edit-history-id').value;
+      const rollValue = document.getElementById('f-academic-roll').value.trim() || null;
+      if (historyId) {
+        await supabaseClient.from('academic_history').update({
+          class_id: classId, section_id: sectionId, academic_roll: rollValue
+        }).eq('id', historyId);
+      } else if (classId && currentSession) {
+        await supabaseClient.from('academic_history').insert({
+          student_id: editId, academic_session_id: currentSession.id,
+          class_id: classId, section_id: sectionId, academic_roll: rollValue
+        });
+      }
+      showToast('হালনাগাদ হয়েছে / Updated', 'success');
+    } else {
+      // ---- CREATE MODE ----
+      let permanentId = document.getElementById('f-permanent-id').value.trim();
+      if (!permanentId) {
+        const year = new Date().getFullYear();
+        const { count } = await supabaseClient
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .like('permanent_student_id', `${year}%`);
+        const serial = String((count || 0) + 1).padStart(4, '0');
+        permanentId = `${year}${serial}`;
+      }
+
+      const { data: student, error } = await supabaseClient.from('students').insert({
+        permanent_student_id: permanentId,
+        ...studentFields,
+        admission_session_id: currentSession ? currentSession.id : null,
+      }).select().single();
+      if (error) throw error;
+      studentId = student.id;
+
+      if (classId && currentSession) {
+        await supabaseClient.from('academic_history').insert({
+          student_id: student.id,
+          academic_session_id: currentSession.id,
+          class_id: classId,
+          section_id: sectionId,
+          academic_roll: document.getElementById('f-academic-roll').value.trim() || null,
+        });
+      }
+      showToast(t('student_added'), 'success');
     }
 
-    showToast(t('student_added'), 'success');
     closeModal('modal-new-student');
     document.getElementById('form-new-student').reset();
+    document.getElementById('f-permanent-id').removeAttribute('disabled');
     await loadStudents();
   } catch (err) {
     showToast(err.message || t('error_generic'), 'error');
@@ -358,7 +443,6 @@ async function unlinkGuardian(linkId) {
   if (error) { showToast(error.message, 'error'); return; }
   await renderLinkedGuardians();
 }
-
 document.getElementById('lg-search').addEventListener('input', (e) => {
   clearTimeout(lgSearchTimeout);
   const q = e.target.value.trim();
@@ -398,4 +482,4 @@ async function linkGuardian(guardianProfileId) {
 })();
 </script>
 </body>
-        </html>
+</html>
