@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Dashboard — DAKBLMP MADRASAH</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body data-lang="bn">
@@ -19,14 +19,32 @@
         <h2 data-i18n="dashboard_title">ড্যাশবোর্ড</h2>
       </div>
 
+      <div id="guardian-dashboard" hidden>
+        <div class="card card-pad" style="text-align:center; padding: var(--space-7) var(--space-5);">
+          <div style="font-size:34px; margin-bottom: var(--space-3);">👋</div>
+          <h3 style="font-size:17px; margin-bottom: var(--space-2);">স্বাগতম / Welcome</h3>
+          <p class="hint" style="max-width:380px; margin:0 auto var(--space-5);">আপনার সন্তানের তথ্য দেখতে "আমার সন্তান" পেজে যান, অথবা মাদ্রাসার পরিচিতি ও গ্যালারি দেখুন। / Visit "My Children" to see your child's info, or check out the Madrasah's introduction and gallery.</p>
+          <div class="row" style="justify-content:center;">
+            <a class="btn btn-primary" href="guardian.html">আমার সন্তান / My Children</a>
+            <a class="btn btn-ghost" href="media.html">মিডিয়া ও পরিচিতি / Media</a>
+          </div>
+        </div>
+      </div>
+
+      <div id="management-dashboard">
       <div class="stat-grid" id="stat-grid">
         <div class="stat-card"><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l" data-i18n="total_students">মোট ছাত্রছাত্রী</div></div>
         <div class="stat-card"><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l" data-i18n="total_teachers">শিক্ষকবৃন্দ</div></div>
         <div class="stat-card"><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l" data-i18n="today_attendance">আজ উপস্থিত</div></div>
-        <div class="stat-card"><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l" data-i18n="fees_due">বকেয়া ফি</div></div>
+        <div class="stat-card" id="stat-absent-card" hidden><div class="accent"></div><div class="n skeleton" style="height:28px;width:50px;">&nbsp;</div><div class="l">আজ অনুপস্থিত / Absent today</div></div>
       </div>
 
       <div style="height: var(--space-5);"></div>
+
+      <div class="card card-pad" id="class-breakdown-card" hidden style="margin-bottom: var(--space-5);">
+        <h3 style="font-size:15px; margin-bottom: var(--space-4);">আজকের ক্লাস-ভিত্তিক হাজিরা / Today's attendance by class</h3>
+        <div id="class-breakdown-list" class="stack"></div>
+      </div>
 
       <div class="grid-2" style="align-items: start;">
         <div class="card card-pad">
@@ -39,24 +57,33 @@
           <div class="stack" id="quick-actions"></div>
         </div>
       </div>
+      </div>
     </div>
 
     <div id="shell-bottomnav-slot"></div>
   </div>
 </div>
 
-<script src="js/supabase-client.js"></script>
-<script src="js/i18n.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/shell.js"></script>
+<script src="js/supabase-client.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
+<script src="js/ui.js?v=2"></script>
+<script src="js/auth.js?v=2"></script>
+<script src="js/shell.js?v=2"></script>
 <script>
 (async () => {
   const profile = await renderShell('dashboard');
   if (!profile) return;
 
+  // Guardians get a simple, distraction-free view — no school-wide stats
+  if (profile.role === 'guardian') {
+    document.getElementById('guardian-dashboard').removeAttribute('hidden');
+    document.getElementById('management-dashboard').setAttribute('hidden', '');
+    return;
+  }
+
   const canManage = ['founder', 'admin'].includes(profile.role);
   const canTeach = canManage || profile.role === 'teacher';
+  const canSeeBreakdown = ['founder', 'admin', 'teacher', 'committee'].includes(profile.role);
 
   // Quick actions, role-aware
   const actions = [];
@@ -70,7 +97,7 @@
   applyI18n();
 
   // Stats
-  const statCards = document.querySelectorAll('#stat-grid .stat-card');
+  const statCards = document.querySelectorAll('#stat-grid .stat-card:not([hidden])');
   try {
     const [{ count: studentCount }, { count: teacherCount }] = await Promise.all([
       supabaseClient.from('students').select('*', { count: 'exact', head: true }).eq('status', 'active'),
@@ -79,21 +106,64 @@
 
     const today = new Date().toISOString().slice(0, 10);
     const { data: presentStatus } = await supabaseClient.from('attendance_statuses').select('id').eq('name', 'Present').single();
-    let presentCount = 0;
+    const { data: absentStatus } = await supabaseClient.from('attendance_statuses').select('id').eq('name', 'Absent').single();
+    let presentCount = 0, absentCount = 0;
     if (presentStatus) {
       const { count } = await supabaseClient.from('attendance').select('*', { count: 'exact', head: true }).eq('attendance_date', today).eq('status_id', presentStatus.id);
       presentCount = count || 0;
     }
+    if (absentStatus) {
+      const { count } = await supabaseClient.from('attendance').select('*', { count: 'exact', head: true }).eq('attendance_date', today).eq('status_id', absentStatus.id);
+      absentCount = count || 0;
+    }
 
-    const { count: dueCount } = await supabaseClient.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'due');
-
-    const values = [studentCount || 0, teacherCount || 0, presentCount || 0, dueCount || 0];
-    statCards.forEach((card, idx) => {
+    if (canSeeBreakdown) document.getElementById('stat-absent-card').removeAttribute('hidden');
+    const values = [studentCount || 0, teacherCount || 0, presentCount || 0, absentCount || 0];
+    document.querySelectorAll('#stat-grid .stat-card').forEach((card, idx) => {
       card.querySelector('.n').outerHTML = `<div class="n">${values[idx]}</div>`;
     });
+
   } catch (err) {
     console.error(err);
     statCards.forEach(card => { card.querySelector('.n').outerHTML = '<div class="n">—</div>'; });
+  }
+
+  // Class-wise attendance breakdown (Teacher/Committee/Admin/Founder only)
+  if (canSeeBreakdown) {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const [{ data: presentStatus }, { data: classes }] = await Promise.all([
+        supabaseClient.from('attendance_statuses').select('id').eq('name', 'Present').single(),
+        supabaseClient.from('classes').select('id, name').eq('is_active', true).order('sort_order'),
+      ]);
+
+      const rows = [];
+      for (const cls of (classes || [])) {
+        const { count: totalInClass } = await supabaseClient
+          .from('academic_history')
+          .select('*', { count: 'exact', head: true })
+          .eq('class_id', cls.id);
+        const { count: presentInClass } = presentStatus
+          ? await supabaseClient.from('attendance').select('*', { count: 'exact', head: true })
+              .eq('attendance_date', today).eq('class_id', cls.id).eq('status_id', presentStatus.id)
+          : { count: 0 };
+        if (totalInClass) rows.push({ name: cls.name, total: totalInClass, present: presentInClass || 0 });
+      }
+
+      const breakdownCard = document.getElementById('class-breakdown-card');
+      const list = document.getElementById('class-breakdown-list');
+      if (rows.length) {
+        breakdownCard.removeAttribute('hidden');
+        list.innerHTML = rows.map(r => `
+          <div class="row" style="justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--color-border);">
+            <span style="font-size: 14px; font-weight: 600;">${r.name}</span>
+            <span class="hint">মোট ${r.total} · উপস্থিত ${r.present} · অনুপস্থিত ${r.total - r.present}</span>
+          </div>
+        `).join('');
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   // Recent notices
