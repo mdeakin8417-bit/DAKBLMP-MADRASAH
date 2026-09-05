@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>My Account — DAKBLMP MADRASAH</title>
+<link rel="stylesheet" href="css/style.css?v=2">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.tabs { display:flex; gap:4px; border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-5); overflow-x:auto; }
+.tab-btn { padding: 10px 16px; border:none; background:none; font-size:13.5px; font-weight:600; color: var(--color-ink-soft); cursor:pointer; border-bottom: 2.5px solid transparent; white-space:nowrap; }
+.tab-btn.active { color: var(--color-green-800); border-bottom-color: var(--color-green-800); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+.policy-text { font-size: 13.5px; color: var(--color-ink-soft); line-height: 1.7; }
+.policy-text h4 { font-size: 13.5px; color: var(--color-green-900); margin: var(--space-4) 0 var(--space-2); }
+</style>
+</head>
+<body data-lang="bn">
+
+<div class="app-shell">
+  <div id="shell-sidebar-slot"></div>
+  <div class="main">
+    <div id="shell-topbar-slot"></div>
+
+    <div class="content">
+      <div class="section-head">
+        <h2>আমার অ্যাকাউন্ট / My Account</h2>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="account">অ্যাকাউন্ট / Account</button>
+        <button class="tab-btn" data-tab="privacy">প্রাইভেসি পলিসি / Privacy Policy</button>
+        <button class="tab-btn" data-tab="data">আমার ডেটা / My Data</button>
+      </div>
+
+      <!-- ===== ACCOUNT ===== -->
+      <div class="tab-panel active" id="panel-account">
+        <div class="card card-pad" style="max-width: 480px; margin-bottom: var(--space-5);">
+          <h3 style="font-size:14.5px; margin-bottom: var(--space-4);">ব্যক্তিগত তথ্য / Personal info</h3>
+          <form id="form-name" class="stack">
+            <div class="field">
+              <label>পূর্ণ নাম / Full name</label>
+              <input type="text" id="pf-name" required>
+            </div>
+            <div class="field">
+              <label>ঠিকানা / Address</label>
+              <textarea id="pf-address" rows="2"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-save-name">সংরক্ষণ করুন / Save</button>
+          </form>
+        </div>
+
+        <div class="card card-pad" style="max-width: 480px;">
+          <h3 style="font-size:14.5px; margin-bottom: var(--space-4);">পাসওয়ার্ড পরিবর্তন / Change password</h3>
+          <form id="form-password" class="stack">
+            <div class="field">
+              <label>বর্তমান পাসওয়ার্ড / Current password</label>
+              <input type="password" id="pf-current-password" required autocomplete="current-password">
+              <span class="hint">নিরাপত্তার জন্য আগে আপনার বর্তমান পাসওয়ার্ড যাচাই করা হবে / For security, your current password is verified first</span>
+            </div>
+            <div class="field">
+              <label>নতুন পাসওয়ার্ড / New password</label>
+              <input type="password" id="pf-password1" required minlength="6" autocomplete="new-password">
+            </div>
+            <div class="field">
+              <label>পুনরায় লিখুন / Confirm password</label>
+              <input type="password" id="pf-password2" required minlength="6" autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-save-password">পাসওয়ার্ড পরিবর্তন করুন / Change password</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ===== PRIVACY POLICY ===== -->
+      <div class="tab-panel" id="panel-privacy">
+        <div class="card card-pad policy-text" style="max-width: 640px;">
+          <h4>তথ্য সংগ্রহ / Information We Collect</h4>
+          <p>এই অ্যাপে আপনার নাম, যোগাযোগের তথ্য, একাডেমিক রেকর্ড, উপস্থিতি ও আর্থিক তথ্য সংরক্ষণ করা হয়, শুধুমাত্র মাদ্রাসা পরিচালনার উদ্দেশ্যে।<br>
+          This app stores your name, contact details, academic records, attendance, and financial information solely for madrasah management purposes.</p>
+          <h4>তথ্যের ব্যবহার / How We Use It</h4>
+          <p>আপনার তথ্য শুধুমাত্র অনুমোদিত ব্যবহারকারী (Admin, Teacher, নিজে, বা সংশ্লিষ্ট অভিভাবক) দেখতে পারবেন — role-based security (RLS) দ্বারা সুরক্ষিত।<br>
+          Your data is visible only to authorized users (Admin, Teacher, yourself, or your linked guardian) — protected by role-based database security (RLS).</p>
+          <h4>তথ্য সংরক্ষণ / Data Storage</h4>
+          <p>সব তথ্য Supabase (PostgreSQL) ক্লাউড ডেটাবেসে এনক্রিপ্টেড অবস্থায় সংরক্ষিত থাকে।<br>
+          All data is stored encrypted in a Supabase (PostgreSQL) cloud database.</p>
+          <h4>আপনার অধিকার / Your Rights</h4>
+          <p>আপনি "আমার ডেটা" ট্যাব থেকে নিজের তথ্যের একটি কপি ডাউনলোড করতে পারবেন। তথ্য মুছে ফেলা বা সংশোধনের জন্য মাদ্রাসা অফিসের সাথে যোগাযোগ করুন।<br>
+          You can download a copy of your own data from the "My Data" tab. To request deletion or correction, please contact the madrasah office.</p>
+        </div>
+      </div>
+
+      <!-- ===== MY DATA ===== -->
+      <div class="tab-panel" id="panel-data">
+        <div class="card card-pad" style="max-width: 480px;">
+          <h3 style="font-size:14.5px; margin-bottom: var(--space-3);">আমার ডেটা ডাউনলোড করুন / Download my data</h3>
+          <p class="hint" style="margin-bottom: var(--space-4);">আপনার প্রোফাইল ও সংশ্লিষ্ট তথ্যের একটি JSON কপি ডাউনলোড হবে। / Downloads a JSON copy of your profile and related records.</p>
+          <button class="btn btn-primary" id="btn-download-data">⬇️ ডাউনলোড করুন / Download</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="shell-bottomnav-slot"></div>
+  </div>
+</div>
+
+<script src="js/supabase-client.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
+<script src="js/ui.js?v=2"></script>
+<script src="js/auth.js?v=2"></script>
+<script src="js/shell.js?v=2"></script>
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+let currentProfile = null;
+
+// This page bypasses the normal approval-gated shell so a person can fix
+// their name/address/password even while their account is still pending —
+// it uses requireAuth() directly instead of renderShell().
+(async () => {
+  currentProfile = await requireAuth();
+  if (!currentProfile) return;
+
+  if (currentProfile.is_approved && currentProfile.role) {
+    // Approved users get the full nav shell
+    await renderShell('account');
+  } else {
+    // Pending users get a minimal header with just logout, no nav
+    document.getElementById('shell-topbar-slot').innerHTML = `
+      <header class="topbar">
+        <div class="topbar-title"><strong>DAKBLMP MADRASAH</strong> — অনুমোদনের অপেক্ষায় / Pending approval</div>
+        <button class="btn btn-ghost" onclick="signOut()">লগ আউট / Log out</button>
+      </header>
+    `;
+  }
+
+  document.getElementById('pf-name').value = currentProfile.full_name || '';
+  document.getElementById('pf-address').value = currentProfile.address || '';
+})();
+
+document.getElementById('form-name').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn-save-name');
+  setBtnLoading(btn, true);
+  try {
+    const newName = document.getElementById('pf-name').value.trim();
+    const newAddress = document.getElementById('pf-address').value.trim();
+    if (!newName) throw new Error('নাম খালি রাখা যাবে না / Name cannot be empty');
+    const session = await getSession();
+    const { error } = await supabaseClient.from('profiles').update({ full_name: newName, address: newAddress || null }).eq('id', session.user.id);
+    if (error) throw error;
+    showToast('সংরক্ষণ করা হয়েছে / Saved', 'success');
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+document.getElementById('form-password').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const currentPassword = document.getElementById('pf-current-password').value;
+  const p1 = document.getElementById('pf-password1').value;
+  const p2 = document.getElementById('pf-password2').value;
+  if (p1 !== p2) { showToast('পাসওয়ার্ড মিলছে না / Passwords do not match', 'error'); return; }
+  const btn = document.getElementById('btn-save-password');
+  setBtnLoading(btn, true);
+  try {
+    // Re-authenticate with the current password first. This prevents
+    // anyone using an already-unlocked/unattended session from silently
+    // changing the password without knowing it.
+    const session = await getSession();
+    const { error: reAuthError } = await supabaseClient.auth.signInWithPassword({
+      email: session.user.email,
+      password: currentPassword
+    });
+    if (reAuthError) throw new Error('বর্তমান পাসওয়ার্ড ভুল / Current password is incorrect');
+
+    const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+    if (error) throw error;
+    showToast('পাসওয়ার্ড পরিবর্তিত হয়েছে / Password changed', 'success');
+    document.getElementById('form-password').reset();
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+
+document.getElementById('btn-download-data').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-download-data');
+  setBtnLoading(btn, true);
+  try {
+    const session = await getSession();
+    const exportData = { profile: currentProfile, exported_at: new Date().toISOString() };
+
+    // If this account is linked to a student record, include it too
+    const { data: studentRow } = await supabaseClient.from('students').select('*').eq('profile_id', session.user.id).maybeSingle();
+    if (studentRow) exportData.student_record = studentRow;
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `my-data-${currentProfile.full_name.replace(/\s+/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    showToast(err.message || t('error_generic'), 'error');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+});
+</script>
+</body>
+</html>

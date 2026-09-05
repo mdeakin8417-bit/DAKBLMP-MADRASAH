@@ -18,7 +18,13 @@ async function getMyProfile() {
     .maybeSingle();
 
   if (error) {
-    console.error(error);
+    // A real fetch error (not just "no row yet") usually means the
+    // session token itself is stale/invalid. Leaving it in localStorage
+    // causes index.html and dashboard.html to bounce off each other
+    // forever (session "exists" but every profile fetch fails). Signing
+    // out clears it, so the next load cleanly shows the login screen.
+    console.error('Profile fetch failed, clearing session:', error);
+    await supabaseClient.auth.signOut();
     return null;
   }
 
@@ -28,8 +34,7 @@ async function getMyProfile() {
   // email confirmation was pending at signup time, so the original insert
   // (attempted with no active session) was blocked by RLS. Now that we
   // have a real session, self-heal by creating it here instead of
-  // returning null, which previously caused an infinite redirect loop
-  // between index.html and dashboard.html.
+  // returning null.
   const fullName = session.user.user_metadata?.full_name || session.user.email || 'User';
   const { data: created, error: createError } = await supabaseClient
     .from('profiles')
@@ -38,7 +43,8 @@ async function getMyProfile() {
     .single();
 
   if (createError) {
-    console.error('Profile self-heal failed:', createError);
+    console.error('Profile self-heal failed, clearing session:', createError);
+    await supabaseClient.auth.signOut();
     return null;
   }
   return created;

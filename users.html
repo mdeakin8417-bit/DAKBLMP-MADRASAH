@@ -88,12 +88,11 @@ function roleOptionsHtml(currentRole) {
   if (isFounder) roles.push('admin');
   return roles.map(r => `<option value="${r}" ${r === currentRole ? 'selected' : ''}>${ROLE_LABELS[r]}</option>`).join('');
 }
-
 async function loadUsers() {
   const { data, error } = await supabaseClient
     .from('profiles')
     .select('id, full_name, role, is_approved, created_at')
-    .neq('role', 'founder')
+    .or('role.is.null,role.neq.founder')
     .order('created_at', { ascending: false });
 
   if (error) { showToast(error.message, 'error'); return; }

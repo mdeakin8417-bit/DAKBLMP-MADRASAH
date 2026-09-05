@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <meta name="theme-color" content="#0B5B4C">
 <title>Students — DAKBLMP MADRASAH</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body data-lang="bn">
@@ -37,13 +37,14 @@
             <tr>
               <th data-i18n="permanent_id">স্থায়ী আইডি</th>
               <th data-i18n="name">নাম</th>
+              <th>শ্রেণি/রোল / Class-Roll</th>
               <th data-i18n="guardian_contact">অভিভাবকের যোগাযোগ</th>
               <th data-i18n="status">অবস্থা</th>
               <th>অভিভাবক / Guardian</th>
             </tr>
           </thead>
           <tbody id="students-tbody">
-            <tr><td colspan="5"><div class="skeleton" style="height:18px;"></div></td></tr>
+            <tr><td colspan="6"><div class="skeleton" style="height:18px;"></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -62,27 +63,37 @@
 <div class="modal-backdrop" id="modal-new-student" hidden>
   <div class="modal">
     <div class="modal-head">
-      <h3 data-i18n="new_student">নতুন ছাত্র</h3>
+      <h3 id="student-modal-title" data-i18n="new_student">নতুন ছাত্র</h3>
       <button class="modal-close" onclick="closeModal('modal-new-student')">&times;</button>
     </div>
     <form id="form-new-student" class="stack">
+      <input type="hidden" id="f-edit-id">
+      <input type="hidden" id="f-edit-history-id">
       <div class="field">
         <label data-i18n="full_name">পূর্ণ নাম</label>
         <input type="text" id="f-name" required>
       </div>
       <div class="field">
         <label data-i18n="permanent_id">স্থায়ী আইডি</label>
-        <input type="text" id="f-permanent-id" placeholder="e.g. 20222076">
+        <input type="text" id="f-permanent-id" placeholder="e.g. 20260001">
         <span class="hint" data-i18n="student_id_auto_hint">ভর্তির বছর থেকে স্বয়ংক্রিয়ভাবে তৈরি করতে খালি রাখুন</span>
       </div>
       <div class="grid-2">
         <div class="field">
           <label data-i18n="class_label">শ্রেণি</label>
           <select id="f-class"></select>
+          <span class="hint" id="f-class-empty-hint" hidden>কোনো ক্লাস তৈরি করা হয়নি — <a href="settings.html" style="color: var(--color-green-800); font-weight:600;">Settings-এ গিয়ে যোগ করুন</a></span>
         </div>
         <div class="field">
           <label data-i18n="section_label">শাখা</label>
           <select id="f-section"></select>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>রোল নম্বর / Academic Roll</label>
+          <input type="text" id="f-academic-roll" placeholder="e.g. 12">
+          <span class="hint">প্রতি বছর/ক্লাসে পরিবর্তনযোগ্য — স্থায়ী আইডির সাথে সম্পর্কিত নয় / Changes each year/class — separate from the permanent ID</span>
         </div>
       </div>
       <div class="grid-2">
@@ -100,8 +111,36 @@
         </div>
       </div>
       <div class="field">
-        <label data-i18n="guardian_contact">অভিভাবকের যোগাযোগ</label>
-        <input type="text" id="f-guardian-contact">
+        <label>অভিভাবকের নাম / Guardian's full name</label>
+        <input type="text" id="f-guardian-name">
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label>অভিভাবকের সম্পর্ক / Relationship</label>
+          <select id="f-guardian-relationship">
+            <option value="">— নির্বাচন করুন / Select —</option>
+            <option value="বাবা">বাবা / Father</option>
+            <option value="মা">মা / Mother</option>
+            <option value="দাদা">দাদা / Paternal grandfather</option>
+            <option value="দাদি">দাদি / Paternal grandmother</option>
+            <option value="নানা">নানা / Maternal grandfather</option>
+            <option value="নানি">নানি / Maternal grandmother</option>
+            <option value="চাচা">চাচা / Uncle (paternal)</option>
+            <option value="মামা">মামা / Uncle (maternal)</option>
+            <option value="ফুফা">ফুফা / Uncle (paternal aunt's husband)</option>
+            <option value="খালু">খালু / Uncle (maternal aunt's husband)</option>
+            <option value="অভিভাবক">অভিভাবক / Guardian</option>
+            <option value="other">অন্যান্য / Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-i18n="guardian_contact">অভিভাবকের মোবাইল নম্বর / Mobile number</label>
+          <input type="tel" id="f-guardian-contact" placeholder="01XXXXXXXXX">
+        </div>
+      </div>
+      <div class="field" id="f-guardian-relationship-other-wrap" hidden>
+        <label>সম্পর্ক লিখুন / Specify relationship</label>
+        <input type="text" id="f-guardian-relationship-other">
       </div>
       <div class="field">
         <label data-i18n="address">ঠিকানা</label>
@@ -136,11 +175,11 @@
   </div>
 </div>
 
-<script src="js/supabase-client.js"></script>
-<script src="js/i18n.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/shell.js"></script>
+<script src="js/supabase-client.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
+<script src="js/ui.js?v=2"></script>
+<script src="js/auth.js?v=2"></script>
+<script src="js/shell.js?v=2"></script>
 <script>
 let allStudents = [];
 let currentSession = null;
@@ -154,12 +193,17 @@ async function loadFormLookups() {
   const classSelect = document.getElementById('f-class');
   classSelect.innerHTML = (classes || []).map(c => `<option value="${c.id}">${c.name}</option>`).join('')
     || '<option value="">— কোনো ক্লাস নেই / No classes yet —</option>';
+  document.getElementById('f-class-empty-hint').toggleAttribute('hidden', !!(classes && classes.length));
 
   classSelect.addEventListener('change', loadSections);
   if (classes && classes.length) await loadSections();
 
   currentSession = (sessions || []).find(s => s.status === 'active') || (sessions || [])[0] || null;
 }
+
+document.getElementById('f-guardian-relationship').addEventListener('change', (e) => {
+  document.getElementById('f-guardian-relationship-other-wrap').toggleAttribute('hidden', e.target.value !== 'other');
+});
 
 async function loadSections() {
   const classId = document.getElementById('f-class').value;
@@ -188,9 +232,13 @@ function renderStudentsTable(students) {
         </span>
       </td>
       <td>${s.full_name}</td>
-      <td>${s.guardian_contact || '—'}</td>
+      <td>${s.current_class ? `${s.current_class}${s.current_roll ? ' · Roll ' + s.current_roll : ''}` : '—'}</td>
+      <td>${s.guardian_name ? s.guardian_name + (s.guardian_contact ? ' · ' + s.guardian_contact : '') : (s.guardian_contact || '—')}</td>
       <td><span class="pill pill-${s.status === 'active' ? 'active' : 'inactive'}">${t(s.status) || s.status}</span></td>
-      <td><button class="btn btn-ghost" style="padding:5px 10px; font-size:12px;" onclick="openLinkGuardian('${s.id}', '${s.full_name.replace(/'/g,"\\'")}')">Manage</button></td>
+      <td>
+        <button class="btn btn-ghost" style="padding:5px 10px; font-size:12px;" onclick="openEditStudent('${s.id}')">Edit</button>
+        <button class="btn btn-ghost" style="padding:5px 10px; font-size:12px;" onclick="openLinkGuardian('${s.id}', '${s.full_name.replace(/'/g,"\\'")}')">Manage</button>
+      </td>
     </tr>
   `).join('');
 }
@@ -198,13 +246,22 @@ function renderStudentsTable(students) {
 async function loadStudents() {
   const { data, error } = await supabaseClient
     .from('students')
-    .select('id, permanent_student_id, full_name, guardian_contact, status')
+    .select('id, permanent_student_id, full_name, guardian_contact, guardian_name, status, academic_history(academic_roll, created_at, classes(name), academic_sessions(status))')
     .order('created_at', { ascending: false });
   if (error) {
     showToast(error.message, 'error');
     return;
   }
-  allStudents = data || [];
+  allStudents = (data || []).map(s => {
+    const history = s.academic_history || [];
+    const current = history.find(h => h.academic_sessions?.status === 'active')
+      || history.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    return {
+      ...s,
+      current_class: current?.classes?.name || null,
+      current_roll: current?.academic_roll || null,
+    };
+  });
   renderStudentsTable(allStudents);
 }
 
@@ -216,51 +273,136 @@ document.getElementById('search-input').addEventListener('input', (e) => {
   ));
 });
 
-document.getElementById('btn-new-student').addEventListener('click', () => openModal('modal-new-student'));
+document.getElementById('btn-new-student').addEventListener('click', () => {
+  document.getElementById('form-new-student').reset();
+  document.getElementById('f-edit-id').value = '';
+  document.getElementById('f-edit-history-id').value = '';
+  document.getElementById('student-modal-title').textContent = 'নতুন ছাত্র / New student';
+  document.getElementById('f-permanent-id').removeAttribute('disabled');
+  openModal('modal-new-student');
+});
+
+async function openEditStudent(studentId) {
+  const s = allStudents.find(x => x.id === studentId);
+  if (!s) return;
+  document.getElementById('form-new-student').reset();
+  document.getElementById('student-modal-title').textContent = 'ছাত্রের তথ্য সম্পাদনা / Edit student';
+  document.getElementById('f-edit-id').value = s.id;
+  document.getElementById('f-name').value = s.full_name || '';
+  document.getElementById('f-permanent-id').value = s.permanent_student_id || '';
+  document.getElementById('f-permanent-id').setAttribute('disabled', ''); // permanent ID is locked once set
+  document.getElementById('f-dob').value = s.date_of_birth || '';
+  document.getElementById('f-gender').value = s.gender || 'male';
+  document.getElementById('f-guardian-name').value = s.guardian_name || '';
+  document.getElementById('f-guardian-contact').value = s.guardian_contact || '';
+  document.getElementById('f-address').value = s.address || '';
+
+  const relOptions = Array.from(document.getElementById('f-guardian-relationship').options).map(o => o.value);
+  if (s.guardian_relationship && relOptions.includes(s.guardian_relationship)) {
+    document.getElementById('f-guardian-relationship').value = s.guardian_relationship;
+    document.getElementById('f-guardian-relationship-other-wrap').setAttribute('hidden', '');
+  } else if (s.guardian_relationship) {
+    document.getElementById('f-guardian-relationship').value = 'other';
+    document.getElementById('f-guardian-relationship-other-wrap').removeAttribute('hidden');
+    document.getElementById('f-guardian-relationship-other').value = s.guardian_relationship;
+  }
+
+  // Load this student's current academic_history row (class/section/roll), if any
+  const { data: history } = await supabaseClient
+    .from('academic_history')
+    .select('id, class_id, section_id, academic_roll')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const current = history && history[0];
+  document.getElementById('f-edit-history-id').value = current ? current.id : '';
+  if (current) {
+    document.getElementById('f-class').value = current.class_id || '';
+    await loadSections();
+    document.getElementById('f-section').value = current.section_id || '';
+    document.getElementById('f-academic-roll').value = current.academic_roll || '';
+  }
+
+  openModal('modal-new-student');
+}
 
 document.getElementById('form-new-student').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btn-save-student');
   setBtnLoading(btn, true);
   try {
-    let permanentId = document.getElementById('f-permanent-id').value.trim();
-    if (!permanentId) {
-      const year = new Date().getFullYear();
-      const { count } = await supabaseClient
-        .from('students')
-        .select('*', { count: 'exact', head: true })
-        .like('permanent_student_id', `${year}%`);
-      const serial = String((count || 0) + 1).padStart(3, '0');
-      permanentId = `${year}${serial}`;
-    }
-
+    const editId = document.getElementById('f-edit-id').value;
     const classId = document.getElementById('f-class').value || null;
     const sectionId = document.getElementById('f-section').value || null;
+    let relationship = document.getElementById('f-guardian-relationship').value;
+    if (relationship === 'other') relationship = document.getElementById('f-guardian-relationship-other').value.trim();
 
-    const { data: student, error } = await supabaseClient.from('students').insert({
-      permanent_student_id: permanentId,
+    const studentFields = {
       full_name: document.getElementById('f-name').value.trim(),
       date_of_birth: document.getElementById('f-dob').value || null,
       gender: document.getElementById('f-gender').value,
       guardian_contact: document.getElementById('f-guardian-contact').value.trim() || null,
+      guardian_name: document.getElementById('f-guardian-name').value.trim() || null,
+      guardian_relationship: relationship || null,
       address: document.getElementById('f-address').value.trim() || null,
-      admission_session_id: currentSession ? currentSession.id : null,
-    }).select().single();
-    if (error) throw error;
+    };
 
-    // Seed academic_history for the admission session/class/section, if a class was picked
-    if (classId && currentSession) {
-      await supabaseClient.from('academic_history').insert({
-        student_id: student.id,
-        academic_session_id: currentSession.id,
-        class_id: classId,
-        section_id: sectionId,
-      });
+    let studentId = editId;
+
+    if (editId) {
+      // ---- EDIT MODE: update existing student (permanent_student_id is never touched) ----
+      const { error } = await supabaseClient.from('students').update(studentFields).eq('id', editId);
+      if (error) throw error;
+
+      const historyId = document.getElementById('f-edit-history-id').value;
+      const rollValue = document.getElementById('f-academic-roll').value.trim() || null;
+      if (historyId) {
+        await supabaseClient.from('academic_history').update({
+          class_id: classId, section_id: sectionId, academic_roll: rollValue
+        }).eq('id', historyId);
+      } else if (classId && currentSession) {
+        await supabaseClient.from('academic_history').insert({
+          student_id: editId, academic_session_id: currentSession.id,
+          class_id: classId, section_id: sectionId, academic_roll: rollValue
+        });
+      }
+      showToast('হালনাগাদ হয়েছে / Updated', 'success');
+    } else {
+      // ---- CREATE MODE ----
+      let permanentId = document.getElementById('f-permanent-id').value.trim();
+      if (!permanentId) {
+        const year = new Date().getFullYear();
+        const { count } = await supabaseClient
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .like('permanent_student_id', `${year}%`);
+        const serial = String((count || 0) + 1).padStart(4, '0');
+        permanentId = `${year}${serial}`;
+      }
+
+      const { data: student, error } = await supabaseClient.from('students').insert({
+        permanent_student_id: permanentId,
+        ...studentFields,
+        admission_session_id: currentSession ? currentSession.id : null,
+      }).select().single();
+      if (error) throw error;
+      studentId = student.id;
+
+      if (classId && currentSession) {
+        await supabaseClient.from('academic_history').insert({
+          student_id: student.id,
+          academic_session_id: currentSession.id,
+          class_id: classId,
+          section_id: sectionId,
+          academic_roll: document.getElementById('f-academic-roll').value.trim() || null,
+        });
+      }
+      showToast(t('student_added'), 'success');
     }
 
-    showToast(t('student_added'), 'success');
     closeModal('modal-new-student');
     document.getElementById('form-new-student').reset();
+    document.getElementById('f-permanent-id').removeAttribute('disabled');
     await loadStudents();
   } catch (err) {
     showToast(err.message || t('error_generic'), 'error');
@@ -305,7 +447,6 @@ async function unlinkGuardian(linkId) {
   if (error) { showToast(error.message, 'error'); return; }
   await renderLinkedGuardians();
 }
-
 document.getElementById('lg-search').addEventListener('input', (e) => {
   clearTimeout(lgSearchTimeout);
   const q = e.target.value.trim();

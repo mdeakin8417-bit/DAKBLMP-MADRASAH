@@ -8,6 +8,7 @@
 const NAV_ITEMS = [
   { key: 'dashboard', href: 'dashboard.html', icon: '&#8962;', label: 'nav_dashboard', roles: 'all' },
   { key: 'my-children', href: 'guardian.html', icon: '&#128118;', label: 'nav_my_children', roles: ['guardian'] },
+  { key: 'media', href: 'media.html', icon: '&#128247;', label: 'nav_media', roles: 'all' },
   { key: 'students', href: 'students.html', icon: '&#128101;', label: 'nav_students', roles: ['founder','admin','teacher'] },
   { key: 'teachers', href: 'teachers.html', icon: '&#127891;', label: 'nav_teachers', roles: ['founder','admin'] },
   { key: 'attendance', href: 'attendance.html', icon: '&#10003;', label: 'nav_attendance', roles: ['founder','admin','teacher'] },
@@ -41,6 +42,7 @@ function renderPendingApprovalScreen(profile) {
           Please contact the madrasah office — once a founder or admin approves your account, you'll get full access.
         </p>
         <button class="btn btn-ghost btn-block" id="pending-logout" style="margin-top: var(--space-4);">লগ আউট / Log out</button>
+        <a href="profile.html" class="btn btn-primary btn-block" style="margin-top: var(--space-3); text-decoration:none;">নাম/পাসওয়ার্ড পরিবর্তন / Edit name or password</a>
       </div>
     </div>
   `;
@@ -87,23 +89,56 @@ async function renderShell(activeKey) {
     </aside>
   `;
 
-  // Bottom nav (mobile) — first 4 + more collapses into settings/menu
-  const mobileItems = visibleItems.slice(0, 5);
+  // Bottom nav (mobile) — first 4 + a "More" sheet for everything else
+  const primaryItems = visibleItems.slice(0, 4);
+  const overflowItems = visibleItems.slice(4);
+  const overflowActive = overflowItems.some(i => i.key === activeKey);
   const bottomNavHtml = `
     <nav class="bottom-nav">
-      ${mobileItems.map(i => `
+      ${primaryItems.map(i => `
         <button onclick="window.location.href='${i.href}'" class="${i.key === activeKey ? 'active' : ''}">
           <span class="icon">${i.icon}</span>
           <span data-i18n="${i.label}">${i.label}</span>
         </button>
       `).join('')}
+      ${overflowItems.length ? `
+        <button onclick="document.getElementById('more-sheet').removeAttribute('hidden')" class="${overflowActive ? 'active' : ''}">
+          <span class="icon">&#8942;</span>
+          <span>আরও / More</span>
+        </button>
+      ` : ''}
     </nav>
+    ${overflowItems.length ? `
+      <div class="modal-backdrop" id="more-sheet" hidden>
+        <div class="modal">
+          <div class="modal-head">
+            <h3>আরও মেনু / More</h3>
+            <button class="modal-close" onclick="document.getElementById('more-sheet').setAttribute('hidden','')">&times;</button>
+          </div>
+          <div class="stack">
+            ${overflowItems.map(i => `
+              <a class="nav-link" style="color: var(--color-ink); background: ${i.key === activeKey ? 'var(--color-green-50)' : 'transparent'};" href="${i.href}">
+                <span class="icon">${i.icon}</span>
+                <span data-i18n="${i.label}">${i.label}</span>
+              </a>
+            `).join('')}
+            <button class="nav-link" style="color: var(--color-danger);" onclick="signOut()">
+              <span class="icon">&#8630;</span>
+              <span data-i18n="nav_logout">লগ আউট</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    ` : ''}
   `;
 
   const topbarHtml = `
     <header class="topbar">
-      <div class="topbar-title">
-        <span data-i18n="${NAV_ITEMS.find(i => i.key === activeKey)?.label || 'nav_dashboard'}"></span>
+      <div class="row" style="gap: 10px;">
+        <button onclick="history.back()" title="Back" style="background:none; border:none; font-size:19px; color: var(--color-ink-soft); cursor:pointer; display:flex; align-items:center; padding:0;">&#8592;</button>
+        <div class="topbar-title">
+          <span data-i18n="${NAV_ITEMS.find(i => i.key === activeKey)?.label || 'nav_dashboard'}"></span>
+        </div>
       </div>
       <div class="row" style="gap: 12px;">
         <a href="search.html" title="Search" style="color: var(--color-ink-soft); font-size: 17px; display:flex; align-items:center;">&#128269;</a>
@@ -111,7 +146,7 @@ async function renderShell(activeKey) {
           <button data-lang-btn="bn">বাং</button>
           <button data-lang-btn="en">EN</button>
         </div>
-        <div class="avatar" title="${profile.full_name}">${initials(profile.full_name)}</div>
+        <a href="profile.html" class="avatar" title="আমার অ্যাকাউন্ট / My Account" style="text-decoration:none;">${initials(profile.full_name)}</a>
       </div>
     </header>
   `;

@@ -8,7 +8,7 @@
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <meta name="theme-color" content="#0B5B4C">
 <title>Attendance — DAKBLMP MADRASAH</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 .att-row { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--color-border); gap:12px; }
@@ -85,11 +85,11 @@
   </div>
 </div>
 
-<script src="js/supabase-client.js"></script>
-<script src="js/i18n.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/shell.js"></script>
+<script src="js/supabase-client.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
+<script src="js/ui.js?v=2"></script>
+<script src="js/auth.js?v=2"></script>
+<script src="js/shell.js?v=2"></script>
 <script>
 let statuses = [];
 let currentSession = null;
@@ -151,7 +151,7 @@ async function loadStudentList() {
   // Find students whose CURRENT academic_history row matches this class/section
   let query = supabaseClient
     .from('academic_history')
-    .select('student_id, students(id, full_name, permanent_student_id, status)')
+    .select('student_id, academic_roll, students(id, full_name, permanent_student_id, status)')
     .eq('class_id', classId);
   if (sectionId) query = query.eq('section_id', sectionId);
   if (currentSession) query = query.eq('academic_session_id', currentSession.id);
@@ -160,8 +160,18 @@ async function loadStudentList() {
   if (error) { showToast(error.message, 'error'); return; }
 
   const students = (histRows || [])
-    .map(r => r.students)
-    .filter(s => s && s.status === 'active');
+    .filter(r => r.students && r.students.status === 'active')
+    .map(r => ({ ...r.students, academic_roll: r.academic_roll }))
+    // Sort by roll number (numeric-aware) so the attendance list matches the
+    // classroom roll call order, not database insertion order.
+    .sort((a, b) => {
+      const rollA = parseInt(a.academic_roll, 10);
+      const rollB = parseInt(b.academic_roll, 10);
+      if (!isNaN(rollA) && !isNaN(rollB)) return rollA - rollB;
+      if (!isNaN(rollA)) return -1;
+      if (!isNaN(rollB)) return 1;
+      return (a.academic_roll || '').localeCompare(b.academic_roll || '');
+    });
 
   // Pull any attendance already recorded for this date so re-opening shows prior marks
   const studentIds = students.map(s => s.id);
@@ -180,6 +190,7 @@ async function loadStudentList() {
     id: s.id,
     full_name: s.full_name,
     permanent_student_id: s.permanent_student_id,
+    academic_roll: s.academic_roll,
     statusId: existingMap[s.id] || null
   }));
 
@@ -198,9 +209,9 @@ function renderAttendanceList() {
   list.innerHTML = currentStudents.map(s => `
     <div class="att-row" data-student="${s.id}">
       <div class="att-student">
-        <div class="avatar">${initials(s.full_name)}</div>
+        <div class="avatar">${s.academic_roll || initials(s.full_name)}</div>
         <div style="min-width:0;">
-          <div class="name">${s.full_name}</div>
+          <div class="name">${s.academic_roll ? `Roll ${s.academic_roll} — ` : ''}${s.full_name}</div>
           <div class="idc">${s.permanent_student_id}</div>
         </div>
       </div>
