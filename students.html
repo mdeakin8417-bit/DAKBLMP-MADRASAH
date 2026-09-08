@@ -253,7 +253,7 @@ function renderStudentsTable(students) {
 async function loadStudents() {
   const { data, error } = await supabaseClient
     .from('students')
-    .select('id, permanent_student_id, full_name, guardian_contact, guardian_name, status, academic_history(academic_roll, created_at, classes(name), academic_sessions(status))')
+    .select('id, permanent_student_id, full_name, guardian_contact, guardian_name, photo_url, status, academic_history(academic_roll, created_at, classes(name), academic_sessions(status))')
     .order('created_at', { ascending: false });
   if (error) {
     showToast(error.message, 'error');
@@ -303,6 +303,10 @@ async function openEditStudent(studentId) {
   document.getElementById('f-guardian-name').value = s.guardian_name || '';
   document.getElementById('f-guardian-contact').value = s.guardian_contact || '';
   document.getElementById('f-address').value = s.address || '';
+  document.getElementById('f-edit-photo-url').value = s.photo_url || '';
+  document.getElementById('f-photo-preview').innerHTML = s.photo_url
+    ? `<img src="${s.photo_url}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;">`
+    : '';
 
   const relOptions = Array.from(document.getElementById('f-guardian-relationship').options).map(o => o.value);
   if (s.guardian_relationship && relOptions.includes(s.guardian_relationship)) {
