@@ -69,9 +69,15 @@
     <form id="form-new-student" class="stack">
       <input type="hidden" id="f-edit-id">
       <input type="hidden" id="f-edit-history-id">
+      <input type="hidden" id="f-edit-photo-url">
       <div class="field">
         <label data-i18n="full_name">পূর্ণ নাম</label>
         <input type="text" id="f-name" required>
+      </div>
+      <div class="field">
+        <label>ছাত্রের ছবি / Student photo</label>
+        <input type="file" id="f-photo" accept="image/*">
+        <div id="f-photo-preview" style="margin-top:8px;"></div>
       </div>
       <div class="field">
         <label data-i18n="permanent_id">স্থায়ী আইডি</label>
@@ -228,7 +234,7 @@ function renderStudentsTable(students) {
     <tr>
       <td>
         <span class="id-badge" style="padding:4px 10px 4px 4px;">
-          <span class="id-photo">${initials(s.full_name)}</span>
+          <span class="id-photo">${s.photo_url ? `<img src="${s.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">` : initials(s.full_name)}</span>
           <span class="id-code">${s.permanent_student_id}</span>
         </span>
       </td>
@@ -338,6 +344,18 @@ document.getElementById('form-new-student').addEventListener('submit', async (e)
     let relationship = document.getElementById('f-guardian-relationship').value;
     if (relationship === 'other') relationship = document.getElementById('f-guardian-relationship-other').value.trim();
 
+    let photoUrl = document.getElementById('f-edit-photo-url')?.value || null;
+    const photoFile = document.getElementById('f-photo').files[0];
+    if (photoFile) {
+      const path = `students/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoFile.name.split('.').pop()}`;
+      const { error: upErr } = await supabaseClient.storage.from('student-photos').upload(path, photoFile);
+      if (upErr) throw upErr;
+      photoUrl = supabaseClient.storage.from('student-photos').getPublicUrl(path).data.publicUrl;
+    }
+
+    const studentFields = {
+      photo_url: photoUrl,
+      full_name: document.getElementById('f-name').value.trim(),
     const studentFields = {
       full_name: document.getElementById('f-name').value.trim(),
       date_of_birth: document.getElementById('f-dob').value || null,
