@@ -284,6 +284,8 @@ document.getElementById('btn-new-student').addEventListener('click', () => {
   document.getElementById('form-new-student').reset();
   document.getElementById('f-edit-id').value = '';
   document.getElementById('f-edit-history-id').value = '';
+  document.getElementById('f-edit-photo-url').value = '';
+  document.getElementById('f-photo-preview').innerHTML = '';
   document.getElementById('student-modal-title').textContent = 'নতুন ছাত্র / New student';
   document.getElementById('f-permanent-id').removeAttribute('disabled');
   openModal('modal-new-student');
