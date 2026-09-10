@@ -3,80 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<meta name="theme-color" content="#0B5B4C">
 <title>ID Card — DAKBLMP MADRASAH</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-/* Standard ID card ratio: 85.6mm x 54mm (credit-card size) */
-.card-stage {
-  display: flex;
-  gap: var(--space-6);
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: var(--space-6) 0;
-}
-.id-card {
-  width: 337px;   /* 85.6mm @ ~96dpi scaled for screen legibility */
-  height: 213px;  /* 54mm */
-  border-radius: 14px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: var(--shadow-pop);
-  font-family: var(--font-body-en);
-}
-.id-card.front {
-  background: linear-gradient(150deg, var(--color-green-900) 0%, var(--color-green-800) 55%, var(--color-green-700) 100%);
-  color: #fff;
-}
-.id-card.front::before {
-  content: "";
-  position: absolute; inset: 0;
-  background-image: radial-gradient(circle at 8px 8px, rgba(201,162,39,0.16) 1.4px, transparent 1.5px);
-  background-size: 16px 16px;
-}
-.id-card-header {
-  position: relative;
-  display: flex; align-items: center; gap: 8px;
-  padding: 12px 14px 8px;
-}
-.id-card-header .mark {
-  width: 26px; height: 26px; border-radius: 7px;
-  background: linear-gradient(155deg, var(--color-gold-400), var(--color-gold-600));
-  display:flex; align-items:center; justify-content:center;
-  font-family: var(--font-display); font-weight:700; font-size: 12px; color: var(--color-green-900);
-  flex-shrink: 0;
-}
-.id-card-header .org-name { font-family: var(--font-display); font-size: 12.5px; line-height:1.2; }
-.id-card-header .org-sub { font-size: 8px; color: var(--color-gold-400); letter-spacing:0.06em; text-transform:uppercase; }
+.card-stage { display: flex; gap: var(--space-6); flex-wrap: wrap; justify-content: center; padding: var(--space-6) 0; }
+.id-card { width: 337px; height: 530px; border-radius: 16px; overflow: hidden; position: relative; box-shadow: var(--shadow-pop); font-family: var(--font-body-en); background: #fff; }
+.id-card.back { width: 337px; height: 220px; }
 
-.id-card-body { position:relative; display:flex; gap: 12px; padding: 4px 14px 10px; align-items:flex-start; }
-.id-photo-box { width: 62px; height: 74px; border-radius: 8px; background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.35); display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-size:22px; flex-shrink:0; }
-.id-info { min-width:0; flex:1; }
-.id-name { font-size: 14.5px; font-weight: 700; line-height:1.2; }
-.id-meta-row { font-size: 9.5px; color: rgba(255,255,255,0.8); margin-top: 4px; display:flex; flex-direction:column; gap:2px; }
-.id-meta-row b { color: #fff; }
+.id-header { background: linear-gradient(150deg, var(--color-green-900), var(--color-green-700)); color: #fff; padding: 14px 14px 10px; text-align:center; position:relative; }
+.id-header::before { content:""; position:absolute; inset:0; background-image: radial-gradient(circle at 8px 8px, rgba(201,162,39,0.16) 1.4px, transparent 1.5px); background-size:16px 16px; }
+.id-header .mark { width:44px; height:44px; border-radius:12px; margin:0 auto 6px; background: linear-gradient(155deg, var(--color-gold-400), var(--color-gold-600)); display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-weight:700; font-size:16px; color: var(--color-green-900); position:relative; }
+.id-header .org-name { font-family: var(--font-display); font-size: 15px; font-weight:700; position:relative; line-height:1.25; }
+.id-header .org-addr { font-size: 9.5px; color: var(--color-gold-100); position:relative; margin-top:2px; }
 
-.id-card-footer {
-  position: absolute; left:0; right:0; bottom:0;
-  padding: 8px 14px 10px;
-  display:flex; justify-content:space-between; align-items:flex-end;
-}
-.id-code-box .label { font-size: 7.5px; text-transform: uppercase; letter-spacing:0.08em; color: var(--color-gold-400); }
-.id-code-box .code { font-family: var(--font-mono); font-weight:700; font-size: 14px; letter-spacing: 0.04em; }
-.id-session-box { font-size: 8.5px; color: rgba(255,255,255,0.75); text-align:right; }
+.id-title-bar { background: var(--color-green-800); color:#fff; text-align:center; padding:5px; font-family: var(--font-display); font-size:14px; letter-spacing:0.06em; }
 
-.id-card.back {
-  background: var(--color-paper);
-  border: 1px solid var(--color-border);
-  color: var(--color-ink);
-  display:flex; flex-direction:column;
-  padding: 14px;
-}
-.id-card.back .motif-divider { margin-bottom: 8px; }
-.id-back-title { font-family: var(--font-display); font-size: 11.5px; color: var(--color-green-900); margin-bottom: 4px; }
-.id-back-text { font-size: 8.5px; color: var(--color-ink-soft); line-height: 1.5; }
-.id-back-footer { margin-top: auto; display:flex; justify-content: space-between; align-items:flex-end; font-size: 8px; color: var(--color-muted); }
-.id-signature-line { border-top: 1px solid var(--color-border); width: 90px; text-align:center; padding-top:3px; }
+.id-photo-wrap { display:flex; justify-content:center; margin-top: 14px; }
+.id-photo-box { width:100px; height:118px; border-radius:8px; overflow:hidden; border:2px solid var(--color-gold-400); background: var(--color-green-50); display:flex; align-items:center; justify-content:center; }
+.id-photo-box img { width:100%; height:100%; object-fit:cover; }
+.id-photo-box .initials { font-family: var(--font-display); font-size:32px; color: var(--color-green-700); }
+
+.id-sid { text-align:center; font-family: var(--font-mono); font-weight:700; font-size:13px; color: var(--color-green-800); margin-top:8px; }
+
+.id-info { padding: 12px 18px 0; }
+.id-row { display:flex; font-size: 12.5px; padding: 4px 0; border-bottom: 1px dotted var(--color-border); }
+.id-row .k { width: 76px; flex-shrink:0; color: var(--color-ink-soft); font-weight:600; }
+.id-row .sep { width:10px; color: var(--color-muted); }
+.id-row .v { flex:1; font-weight:600; color: var(--color-ink); }
+
+.id-sign { position:absolute; bottom: 14px; right: 18px; text-align:center; }
+.id-sign .line { border-top:1px solid var(--color-ink-soft); width:110px; margin-bottom:3px; }
+.id-sign .label { font-size:9.5px; color: var(--color-ink-soft); }
+
+.id-card.back { padding: 16px; }
+.id-back-qr { text-align:center; margin: 6px 0 10px; }
+.id-back-text { font-size: 9px; color: var(--color-ink-soft); line-height:1.5; text-align:center; }
+.id-back-org { font-family: var(--font-display); font-size:12.5px; color: var(--color-green-900); text-align:center; margin-bottom:6px; }
 
 @media print {
   .app-shell > *:not(.main), .topbar, .bottom-nav, .section-head, .card-search-wrap { display: none !important; }
@@ -121,11 +88,12 @@
   </div>
 </div>
 
-<script src="js/supabase-client.js"></script>
-<script src="js/i18n.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/shell.js"></script>
+<script src="js/supabase-client.js?v=2"></script>
+<script src="js/pwa.js?v=2"></script>
+<script src="js/i18n.js?v=2"></script>
+<script src="js/ui.js?v=2"></script>
+<script src="js/auth.js?v=2"></script>
+<script src="js/shell.js?v=2"></script>
 <script>
 let orgInfo = { name: 'DAKBLMP MADRASAH', address: '' };
 let searchTimeout;
@@ -158,63 +126,78 @@ document.getElementById('id-student-search').addEventListener('input', (e) => {
   }, 250);
 });
 
+function initialsOf(name) {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function row(label, value) {
+  if (!value) return '';
+  return `<div class="id-row"><span class="k">${label}</span><span class="sep">:</span><span class="v">${value}</span></div>`;
+}
+
 async function loadCard(studentId) {
   document.getElementById('id-student-results').style.display = 'none';
 
   const { data: student } = await supabaseClient.from('students').select('*').eq('id', studentId).single();
   const { data: hist } = await supabaseClient
     .from('academic_history')
-    .select('classes(name), sections(name), academic_sessions(name, status)')
+    .select('academic_roll, classes(name, departments(name)), sections(name), academic_sessions(name, status)')
     .eq('student_id', studentId);
   const current = (hist || []).find(h => h.academic_sessions?.status === 'active') || (hist || [])[0];
 
   document.getElementById('id-student-search').value = `${student.full_name} (${student.permanent_student_id})`;
   document.getElementById('btn-print-card').disabled = false;
 
-  const className = current?.classes?.name || '—';
+  const className = current?.classes?.name || '';
+  const groupName = current?.classes?.departments?.name || '';
   const sectionName = current?.sections?.name || '';
-  const sessionName = current?.academic_sessions?.name || '—';
+  const sessionName = current?.academic_sessions?.name || '';
+  const roll = current?.academic_roll || '';
+  const bloodGroup = student.blood_group || '';
+
+  const photoHtml = student.photo_url
+    ? `<img src="${student.photo_url}" alt="${student.full_name}">`
+    : `<span class="initials">${initialsOf(student.full_name)}</span>`;
 
   document.getElementById('card-preview-wrap').innerHTML = `
     <div class="card-stage">
       <div class="id-card front">
-        <div class="id-card-header">
+        <div class="id-header">
           <div class="mark">DM</div>
-          <div>
-            <div class="org-name">${orgInfo.name}</div>
-            <div class="org-sub">Student ID Card</div>
-          </div>
+          <div class="org-name">${orgInfo.name}</div>
+          ${orgInfo.address ? `<div class="org-addr">${orgInfo.address}</div>` : ''}
         </div>
-        <div class="id-card-body">
-          <div class="id-photo-box">${initials(student.full_name)}</div>
-          <div class="id-info">
-            <div class="id-name">${student.full_name}</div>
-            <div class="id-meta-row">
-              <span>Class: <b>${className}${sectionName ? ' · ' + sectionName : ''}</b></span>
-              <span>Guardian: <b>${student.guardian_contact || '—'}</b></span>
-            </div>
-          </div>
+        <div class="id-title-bar">ID CARD</div>
+        <div class="id-photo-wrap">
+          <div class="id-photo-box">${photoHtml}</div>
         </div>
-        <div class="id-card-footer">
-          <div class="id-code-box">
-            <div class="label">Permanent ID</div>
-            <div class="code">${student.permanent_student_id}</div>
-          </div>
-          <div class="id-session-box">Session<br><b>${sessionName}</b></div>
+        <div class="id-sid">SID: ${student.permanent_student_id}</div>
+        <div class="id-info">
+          ${row('Name', student.full_name)}
+          ${row('Class', className)}
+          ${row('Group', groupName)}
+          ${row('Roll', roll)}
+          ${row('Section', sectionName)}
+          ${row('Session', sessionName)}
+          ${row('BG', bloodGroup)}
+        </div>
+        <div class="id-sign">
+          <div class="line"></div>
+          <div class="label">Sign of Principal</div>
         </div>
       </div>
 
       <div class="id-card back">
-        <div class="motif-divider"></div>
-        <div class="id-back-title">${orgInfo.name}</div>
+        <div class="id-back-org">${orgInfo.name}</div>
+        <div class="id-back-qr">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${student.permanent_student_id}" alt="QR Code" style="width:76px; height:76px;">
+        </div>
         <div class="id-back-text">
           ${orgInfo.address ? orgInfo.address + '<br>' : ''}
-          This card is the property of ${orgInfo.name}. If found, please return to the madrasah office.
+          This card is the property of ${orgInfo.name}.<br>
+          If found, please return to the madrasah office.<br>
           এই কার্ডটি হারিয়ে গেলে অনুগ্রহ করে মাদ্রাসা অফিসে ফেরত দিন।
-        </div>
-        <div class="id-back-footer">
-          <span>ID: ${student.permanent_student_id}</span>
-          <div class="id-signature-line">Authorized signature</div>
         </div>
       </div>
     </div>
