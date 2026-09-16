@@ -12,40 +12,94 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 .card-stage { display: flex; gap: var(--space-6); flex-wrap: wrap; justify-content: center; padding: var(--space-6) 0; }
-.id-card { width: 337px; height: 530px; border-radius: 18px; overflow: hidden; position: relative; box-shadow: 0 20px 40px -12px rgba(7,62,51,0.35), 0 0 0 1px rgba(201,162,39,0.25); font-family: var(--font-body-en); background: #fff; border: 2px solid var(--color-gold-400); }
-.id-card.back { width: 337px; height: 230px; }
 
-.id-header { background: linear-gradient(150deg, var(--color-green-900), var(--color-green-700)); color: #fff; padding: 14px 14px 10px; text-align:center; position:relative; }
-.id-header::before { content:""; position:absolute; inset:0; background-image: radial-gradient(circle at 8px 8px, rgba(201,162,39,0.16) 1.4px, transparent 1.5px); background-size:16px 16px; }
-.id-header .mark { width:44px; height:44px; border-radius:12px; margin:0 auto 6px; background: linear-gradient(155deg, var(--color-gold-400), var(--color-gold-600)); display:flex; align-items:center; justify-content:center; font-family: var(--font-display); font-weight:700; font-size:16px; color: var(--color-green-900); position:relative; box-shadow: 0 3px 8px rgba(0,0,0,0.25); }
-.id-header .org-name { font-family: var(--font-display); font-size: 15px; font-weight:700; position:relative; line-height:1.25; }
-.id-header .org-addr { font-size: 9.5px; color: var(--color-gold-100); position:relative; margin-top:2px; }
+.id-card {
+  width: 337px; height: 480px;
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 22px 44px -14px rgba(7,62,51,0.4), 0 0 0 1px rgba(201,162,39,0.3);
+  font-family: var(--font-body-en);
+  border: 2.5px solid var(--color-gold-400);
+  background: var(--color-paper);
+  display: flex;
+  flex-direction: column;
+}
 
-.id-title-bar { background: var(--color-green-800); color:#fff; text-align:center; padding:5px; font-family: var(--font-display); font-size:14px; letter-spacing:0.06em; position:relative; display:flex; align-items:center; justify-content:center; }
-.id-front-qr { position:absolute; top: 6px; right: 10px; width:52px; height:52px; background:#fff; border-radius:6px; padding:2px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
-.id-front-qr img { width:100%; height:100%; display:block; }
+.id-body {
+  flex: 1;
+  position: relative;
+  background: var(--color-paper);
+  background-image: radial-gradient(circle at 9px 9px, rgba(201,162,39,0.14) 1.4px, transparent 1.5px);
+  background-size: 18px 18px;
+  display: flex;
+  flex-direction: column;
+}
 
-.id-photo-wrap { display:flex; justify-content:center; margin-top: 14px; }
-.id-photo-box { width:100px; height:118px; border-radius:8px; overflow:hidden; border:3px solid var(--color-gold-400); background: var(--color-green-50); display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 12px rgba(7,62,51,0.25); }
+.id-header {
+  background: linear-gradient(150deg, var(--color-green-900), var(--color-green-700));
+  color: #fff; padding: 12px 14px 22px; text-align:center; position:relative; flex-shrink:0;
+}
+.id-header::before { content:""; position:absolute; inset:0; background-image: radial-gradient(circle at 8px 8px, rgba(201,162,39,0.18) 1.4px, transparent 1.5px); background-size:16px 16px; }
+.id-header .mark {
+  width:52px; height:52px; border-radius:50%; margin:0 auto 6px; position:relative;
+  border: 2.5px solid var(--color-gold-400); background:#fff; overflow:hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.id-header .mark img { width:100%; height:100%; object-fit:cover; }
+.id-header .org-name { font-family: var(--font-display); font-size: 14.5px; font-weight:700; position:relative; line-height:1.3; }
+.id-header .org-addr { font-size: 9px; color: var(--color-gold-100); position:relative; margin-top:2px; }
+
+.id-header-edge {
+  height: 14px; margin-top: -14px; position:relative;
+  background: radial-gradient(circle at 7px 0, transparent 7px, var(--color-green-700) 7.5px) 0 0 / 14px 14px repeat-x;
+  transform: translateY(1px);
+}
+
+.id-qr-badge {
+  position: absolute; top: 46px; right: 12px;
+  width: 54px; height: 54px; background:#fff; border-radius: 10px;
+  padding: 3px; box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  border: 1.5px solid var(--color-gold-400);
+}
+.id-qr-badge img { width:100%; height:100%; display:block; }
+
+.id-title { text-align:center; font-family: var(--font-display); font-size:13px; letter-spacing:0.12em; color: var(--color-green-800); margin-top: 12px; }
+
+.id-photo-wrap { display:flex; justify-content:center; margin-top: 10px; }
+.id-photo-box { width:96px; height:112px; border-radius:8px; overflow:hidden; border:3px solid var(--color-gold-400); background: #fff; display:flex; align-items:center; justify-content:center; box-shadow: 0 6px 14px rgba(7,62,51,0.3); }
 .id-photo-box img { width:100%; height:100%; object-fit:cover; }
-.id-photo-box .initials { font-family: var(--font-display); font-size:32px; color: var(--color-green-700); }
+.id-photo-box .initials { font-family: var(--font-display); font-size:30px; color: var(--color-green-700); }
 
-.id-sid { text-align:center; font-family: var(--font-mono); font-weight:700; font-size:13px; color: var(--color-green-800); margin-top:8px; }
+.id-sid { text-align:center; font-family: var(--font-mono); font-weight:700; font-size:12.5px; color: var(--color-green-800); margin-top:7px; letter-spacing:0.03em; }
 
-.id-info { padding: 12px 18px 0; }
-.id-row { display:flex; font-size: 12.5px; padding: 4px 0; border-bottom: 1px dotted var(--color-border); }
-.id-row .k { width: 76px; flex-shrink:0; color: var(--color-ink-soft); font-weight:600; }
-.id-row .sep { width:10px; color: var(--color-muted); }
-.id-row .v { flex:1; font-weight:600; color: var(--color-ink); }
+.id-info { padding: 10px 20px 0; position:relative; flex:1; }
+.id-row { display:flex; font-size: 12px; padding: 4.5px 0; border-bottom: 1px solid rgba(201,162,39,0.35); }
+.id-row .k { width: 72px; flex-shrink:0; color: var(--color-ink-soft); font-weight:600; }
+.id-row .sep { width:10px; color: var(--color-gold-600); font-weight:700; }
+.id-row .v { flex:1; font-weight:700; color: var(--color-green-900); }
 
-.id-sign { position:absolute; bottom: 14px; right: 18px; text-align:center; }
+.id-sign { position:absolute; bottom: 14px; right: 20px; text-align:center; }
 .id-sign .line { border-top:1px solid var(--color-ink-soft); width:110px; margin-bottom:3px; }
-.id-sign .label { font-size:9.5px; color: var(--color-ink-soft); }
+.id-sign .label { font-size:9px; color: var(--color-ink-soft); }
 
-.id-card.back { padding: 16px; }
-.id-back-qr { text-align:center; margin: 6px 0 10px; }
-.id-back-text { font-size: 9px; color: var(--color-ink-soft); line-height:1.5; text-align:center; }
-.id-back-org { font-family: var(--font-display); font-size:12.5px; color: var(--color-green-900); text-align:center; margin-bottom:6px; }
+.id-back-body {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding: 20px 22px; position:relative; text-align:center;
+  background: var(--color-paper);
+  background-image: radial-gradient(circle at 9px 9px, rgba(201,162,39,0.14) 1.4px, transparent 1.5px);
+  background-size: 18px 18px;
+}
+.id-back-watermark {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  opacity: 0.06; pointer-events:none;
+}
+.id-back-watermark img { width: 220px; height:220px; object-fit:contain; }
+.id-back-org { font-family: var(--font-display); font-size:14px; color: var(--color-green-900); margin-bottom: 14px; position:relative; }
+.id-back-qr-wrap { background:#fff; border: 2px solid var(--color-gold-400); border-radius: 12px; padding: 10px; box-shadow: 0 8px 18px rgba(7,62,51,0.2); position:relative; }
+.id-back-qr-wrap img { width: 116px; height:116px; display:block; }
+.id-back-text { font-size: 9.5px; color: var(--color-ink-soft); line-height:1.7; margin-top: 16px; position:relative; }
+.id-back-id { font-family: var(--font-mono); font-weight:700; color: var(--color-green-800); font-size:11px; margin-top:10px; position:relative; }
 
 @media print {
   .app-shell > *:not(.main), .topbar, .bottom-nav, .section-head, .card-search-wrap { display: none !important; }
@@ -99,6 +153,7 @@
 <script>
 let orgInfo = { name: 'DAKBLMP MADRASAH', address: '' };
 let searchTimeout;
+const LOGO_URL = 'assets/madrasah-logo.png';
 
 async function loadOrgInfo() {
   const { data } = await supabaseClient.from('settings').select('value').eq('key', 'madrasah_general').maybeSingle();
@@ -162,49 +217,52 @@ async function loadCard(studentId) {
     ? `<img src="${student.photo_url}" alt="${student.full_name}">`
     : `<span class="initials">${initialsOf(student.full_name)}</span>`;
 
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${student.permanent_student_id}`;
+
   document.getElementById('card-preview-wrap').innerHTML = `
     <div class="card-stage">
-      <div class="id-card front">
+      <div class="id-card">
         <div class="id-header">
-          <div class="mark">DM</div>
+          <div class="mark"><img src="${LOGO_URL}" alt="Logo"></div>
           <div class="org-name">${orgInfo.name}</div>
           ${orgInfo.address ? `<div class="org-addr">${orgInfo.address}</div>` : ''}
         </div>
-        <div class="id-title-bar">
-          ID CARD
-          <div class="id-front-qr">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${student.permanent_student_id}" alt="QR">
+        <div class="id-header-edge"></div>
+        <div class="id-qr-badge"><img src="${qrUrl}" alt="QR"></div>
+        <div class="id-body">
+          <div class="id-title">STUDENT ID CARD</div>
+          <div class="id-photo-wrap">
+            <div class="id-photo-box">${photoHtml}</div>
           </div>
-        </div>
-        <div class="id-photo-wrap">
-          <div class="id-photo-box">${photoHtml}</div>
-        </div>
-        <div class="id-sid">SID: ${student.permanent_student_id}</div>
-        <div class="id-info">
-          ${row('Name', student.full_name)}
-          ${row('Class', className)}
-          ${row('Group', groupName)}
-          ${row('Roll', roll)}
-          ${row('Section', sectionName)}
-          ${row('Session', sessionName)}
-          ${row('BG', bloodGroup)}
-        </div>
-        <div class="id-sign">
-          <div class="line"></div>
-          <div class="label">Sign of Principal</div>
+          <div class="id-sid">SID: ${student.permanent_student_id}</div>
+          <div class="id-info">
+            ${row('Name', student.full_name)}
+            ${row('Class', className)}
+            ${row('Group', groupName)}
+            ${row('Roll', roll)}
+            ${row('Section', sectionName)}
+            ${row('Session', sessionName)}
+            ${row('BG', bloodGroup)}
+          </div>
+          <div class="id-sign">
+            <div class="line"></div>
+            <div class="label">Sign of Principal</div>
+          </div>
         </div>
       </div>
 
-      <div class="id-card back">
-        <div class="id-back-org">${orgInfo.name}</div>
-        <div class="id-back-qr">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${student.permanent_student_id}" alt="QR Code" style="width:76px; height:76px;">
-        </div>
-        <div class="id-back-text">
-          ${orgInfo.address ? orgInfo.address + '<br>' : ''}
-          This card is the property of ${orgInfo.name}.<br>
-          If found, please return to the madrasah office.<br>
-          এই কার্ডটি হারিয়ে গেলে অনুগ্রহ করে মাদ্রাসা অফিসে ফেরত দিন।
+      <div class="id-card">
+        <div class="id-back-body">
+          <div class="id-back-watermark"><img src="${LOGO_URL}" alt=""></div>
+          <div class="id-back-org">${orgInfo.name}</div>
+          <div class="id-back-qr-wrap"><img src="${qrUrl}" alt="QR Code"></div>
+          <div class="id-back-text">
+            ${orgInfo.address ? orgInfo.address + '<br>' : ''}
+            This card is the property of ${orgInfo.name}.<br>
+            If found, please return to the madrasah office.<br>
+            এই কার্ডটি হারিয়ে গেলে অনুগ্রহ করে মাদ্রাসা অফিসে ফেরত দিন।
+          </div>
+          <div class="id-back-id">ID: ${student.permanent_student_id}</div>
         </div>
       </div>
     </div>
